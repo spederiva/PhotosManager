@@ -5,3 +5,6 @@ persist-storage/
 persist-mediaitemcache/
 persist-albumcache/
 .DS_STORE
+.idea/
+
+config.js
