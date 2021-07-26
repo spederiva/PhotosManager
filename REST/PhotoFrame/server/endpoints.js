@@ -1,12 +1,10 @@
 const config = require('../config.js');
 const { storage, albumCache, mediaItemCache } = require('./cache');
-const { returnPhotos, returnError, libraryApiSearch, libraryApiGetAlbums, libraryApiCreateAlbums } = require('./services');
+const { returnPhotos, returnError, libraryApiSearch, libraryApiGetAlbums, createAlbums } = require('./services');
 
 const addRoutes = (app, logger, passport) => {
 
-    // GET request to the root.
-    // Display the login screen if the user is not logged in yet, otherwise the
-    // photo frame.
+    // GET request to the root. Display the login screen if the user is not logged in yet, otherwise the photo frame.
     app.get('/', (req, res) => {
         if (!req.user || !req.isAuthenticated()) {
             // Not logged in yet.
@@ -16,8 +14,7 @@ const addRoutes = (app, logger, passport) => {
         }
     });
 
-    // GET request to log out the user.
-    // Destroy the current session and redirect back to the log in screen.
+    // GET request to log out the user. Destroy the current session and redirect back to the log in screen.
     app.get('/logout', (req, res) => {
         req.logout();
         req.session.destroy();
@@ -38,14 +35,12 @@ const addRoutes = (app, logger, passport) => {
         res.redirect('/');
     });
 
-    // Loads the search page if the user is authenticated.
-    // This page includes the search form.
+    // Loads the search page if the user is authenticated. This page includes the search form.
     app.get('/search', (req, res) => {
         renderIfAuthenticated(req, res, 'pages/search');
     });
 
-    // Loads the album page if the user is authenticated.
-    // This page displays a list of albums owned by the user.
+    // Loads the album page if the user is authenticated. This page displays a list of albums owned by the user.
     app.get('/album', (req, res) => {
         renderIfAuthenticated(req, res, 'pages/album');
     });
@@ -53,7 +48,6 @@ const addRoutes = (app, logger, passport) => {
     app.get('/uploadAlbums', (req, res) => {
         renderIfAuthenticated(req, res, 'pages/uploadAlbums');
     });
-
 
     // Handles form submissions from the search page.
     // The user has made a selection and wants to load photos into the photo frame
@@ -137,24 +131,19 @@ const addRoutes = (app, logger, passport) => {
     });
 
     app.post('/addAlbum', async (req, res) => {
-        // return res.status(200).send({ test: 'xxx' });
-
         logger.info('Create New Album');
         const userId = req.user.profile.id;
 
-        const data = await libraryApiCreateAlbums(req.user.token);
-        if (data.error) {
-            // Error occured during the request. Albums could not be loaded.
-            returnError(res, data);
+        try {
+            const data = await createAlbums(req.user.token);
+
+            return res.status(200).send(data);
+        } catch (err){
             // Clear the cached albums.
             albumCache.removeItem(userId);
-        } else {
-            // Albums were successfully loaded from the API. Cache them
-            // temporarily to speed up the next request and return them.
-            // The cache implementation automatically clears the data when the TTL is
-            // reached.
-            res.status(200).send(data);
-            albumCache.setItemSync(userId, data);
+
+            // Error occured during the request. Albums could not be loaded.
+            return returnError(res, err);
         }
     });
 

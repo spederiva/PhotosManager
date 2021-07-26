@@ -1,6 +1,7 @@
 const request = require('request-promise');
+const Photos = require('googlephotos');
 const config = require('../config.js');
-const {logger} = require('./logger');
+const { logger } = require('./logger');
 const { storage, albumCache, mediaItemCache } = require('./cache');
 
 
@@ -158,11 +159,7 @@ async function libraryApiGetAlbums(authToken) {
     return { albums, error };
 }
 
-async function libraryApiCreateAlbums(authToken) {
-    let albums = [];
-    let nextPageToken = null;
-    let error = null;
-    let parameters = { pageSize: config.albumPageSize };
+async function createAlbums(authToken) {
     let body = {
         "album": {
             "title": "new-album-" + new Date().toJSON()
@@ -178,49 +175,42 @@ async function libraryApiCreateAlbums(authToken) {
             auth: { 'bearer': authToken },
         });
 
-        logger.debug(`Response: ${result}`);
+        logger.debug('Albums created', result);
 
-        albums = result;
+        const { id: albumId } = result;
 
-        // Loop while there is a nextpageToken property in the response until all
-        // albums have been listed.
-        // do {
-        //     logger.verbose(`Loading albums. Received so far: ${albums.length}`);
-        //     // Make a GET request to load the albums with optional parameters (the
-        //     // pageToken if set).
-        //     const result = await request.get(config.apiEndpoint + '/v1/albums', {
-        //         headers: { 'Content-Type': 'application/json' },
-        //         qs: parameters,
-        //         json: true,
-        //         auth: { 'bearer': authToken },
-        //     });
-        //
-        //     logger.debug(`Response: ${result}`);
-        //
-        //     if (result && result.albums) {
-        //         logger.verbose(`Number of albums received: ${result.albums.length}`);
-        //         // Parse albums and add them to the list, skipping empty entries.
-        //         const items = result.albums.filter(x => !!x);
-        //
-        //         albums = albums.concat(items);
-        //     }
-        //     parameters.pageToken = result.nextPageToken;
-        //     // Loop until all albums have been listed and no new nextPageToken is
-        //     // returned.
-        // } while (parameters.pageToken != null);
+        const folderPath = '/Users/sebastian/Desktop/temp-pics';
+        return await Promise.all([
+            uploadMediaToAlbum(authToken, albumId, '1.jpg', 'file-1', folderPath),
+            // uploadMediaToAlbum(authToken, albumId, '2.jpg', 'file-2', folderPath),
+            // uploadMediaToAlbum(authToken, albumId, '3.jpg', 'file-3', folderPath),
+        ])
 
+
+        return uploadMedia(authToken, albumId);
+
+        return result;
     } catch (err) {
-        // If the error is a StatusCodeError, it contains an error.error object that
-        // should be returned. It has a name, statuscode and message in the correct
-        // format. Otherwise extract the properties.
-        error = err.error.error ||
-            { name: err.name, code: err.statusCode, message: err.message };
         logger.error(error);
-    }
 
-    logger.info('Albums created.');
-    return { albums, error };
+        throw err;
+    }
 }
 
-module.exports = { returnPhotos, returnError, libraryApiSearch, libraryApiGetAlbums, libraryApiCreateAlbums };
+async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath) {
+    const requestDelay = 5000;
+    const filePath = `${folderPath}/${fileName}`;
+
+    const photos = new Photos(authToken);
+
+    const uploadToken = await photos.transport.upload(fileName, filePath, requestDelay);
+    const response = await photos.mediaItems.albumBatchCreate(albumId, fileName, fileDescription, uploadToken);
+
+    logger.debug('Media uploaded', { filePath, fileName, fileDescription, response });
+
+    return response;
+}
+
+
+module.exports = { returnPhotos, returnError, libraryApiSearch, libraryApiGetAlbums, createAlbums };
 
