@@ -48,4 +48,8 @@ config.albumPageSize = 50;
 // The API end point to use. Do not change.
 config.apiEndpoint = 'https://photoslibrary.googleapis.com';
 
+config.rootFolder = '/Users/sebastian/Desktop/temp-pics';
+
+config.validFileExtensions = ['JPG'].map(e => e.toUpperCase())
+
 module.exports = config;

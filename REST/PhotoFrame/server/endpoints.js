@@ -1,6 +1,6 @@
 const config = require('../config.js');
 const { storage, albumCache, mediaItemCache } = require('./cache');
-const { returnPhotos, returnError, libraryApiSearch, libraryApiGetAlbums, createAlbums } = require('./services');
+const { returnPhotos, returnError, libraryApiSearch, libraryApiGetAlbums, createAlbums, getFolders } = require('./services');
 
 const addRoutes = (app, logger, passport) => {
 
@@ -130,15 +130,16 @@ const addRoutes = (app, logger, passport) => {
         returnPhotos(res, userId, data, parameters)
     });
 
-    app.post('/addAlbum', async (req, res) => {
-        logger.info('Create New Album');
+    app.post('/addAlbums', async (req, res) => {
         const userId = req.user.profile.id;
 
+        logger.info('Create New Albums', req.body);
+
         try {
-            const data = await createAlbums(req.user.token);
+            const data = await createAlbums(req.user.token, req.body.checkedFolders);
 
             return res.status(200).send(data);
-        } catch (err){
+        } catch (err) {
             // Clear the cached albums.
             albumCache.removeItem(userId);
 
@@ -217,6 +218,22 @@ const addRoutes = (app, logger, passport) => {
             res.status(200).send({});
         }
     });
+
+    app.get('/getFolders', async (req, res) => {
+        logger.info('Loading Folders');
+        const userId = req.user.profile.id;
+
+        try {
+            const data = getFolders();
+
+            return res.status(200).send(data);
+        } catch (err){
+            logger.error('Error loading folders', err);
+
+            return returnError(res, err);
+        }
+    });
+
 
     // Renders the given page if the user is authenticated.
     // Otherwise, redirects to "/".

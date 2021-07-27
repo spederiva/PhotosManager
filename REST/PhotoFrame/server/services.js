@@ -1,3 +1,5 @@
+const _ = require('lodash');
+const fs = require('fs');
 const request = require('request-promise');
 const Photos = require('googlephotos');
 const config = require('../config.js');
@@ -35,11 +37,11 @@ function returnPhotos(res, userId, data, searchParameter) {
 
 // Responds with an error status code and the encapsulated data.error.
 function returnError(res, data) {
-    // Return the same status code that was returned in the error or use 500
-    // otherwise.
-    const statusCode = data.error.code || 500;
+    // Return the same status code that was returned in the error or use 500 otherwise.
+    const statusCode = data && data.error && data.error.code || 500;
+
     // Return the error.
-    res.status(statusCode).send(data.error);
+    res.status(statusCode).send(data.error || data.message);
 }
 
 // Submits a search request to the Google Photos Library API for the given
@@ -159,17 +161,136 @@ async function libraryApiGetAlbums(authToken) {
     return { albums, error };
 }
 
-async function createAlbums(authToken) {
+function getFolders() {
+    return fs.readdirSync(config.rootFolder)
+        .filter(folderName => !folderName.startsWith('.'))
+        .filter(folderName => isFolder(config.rootFolder, folderName))
+        .map(folderName => {
+            return {
+                folderName,
+                fullPath: `${config.rootFolder}/${folderName}`,
+                itemCount: getNumberOfItemsInFolder(`${config.rootFolder}/${folderName}`)
+            }
+        })
+}
+
+function getNumberOfItemsInFolder(dirPath = config.rootFolder, arrayOfFiles = []) {
+    return fs.readdirSync(dirPath)
+        .filter(filename => !filename.startsWith('.'))
+        .reduce((counter, current) => {
+            if (isFolder(dirPath, current)) {
+                return counter + getNumberOfItemsInFolder(`${dirPath}/${current}`);
+            }
+
+            return ++counter;
+        }, 0)
+}
+
+async function createAlbums(authToken, folderLists) {
+    logger.debug('Creating albums', folderLists);
+
+    if (!folderLists || folderLists.length === 0) {
+        logger.info('Albums empty', folderLists);
+
+        throw new Error('No Folder selected');
+    }
+
+    try {
+        const folders = await Promise.all(folderLists.map(async f => {
+            return {
+                ...f,
+                items: await createAlbumAndUploadPhotos(authToken, f),
+            }
+        }));
+
+        logger.info('Albums with photos created', folders);
+
+        return folders;
+    } catch (err) {
+        logger.error(err);
+
+        throw err;
+    }
+}
+
+async function createAlbumAndUploadPhotos(authToken, { folderName, fullPath }) {
+    let googlePhotosAlbum = null;
+    let albumName = null;
+
+    const items = getItemsInFolder(fullPath);
+
+    logger.info('Creating album and uploading photos', { folderName, fullPath, count: items.length });
+
+    for (const file of items) {
+        const isDirectory = isFolder(fullPath, file);
+        const isValidFile = isValidFileExtension(file);
+
+        logger.debug('createAlbumAndUploadPhotos', { folderName, fullPath, file, isDirectory, isValidFile });
+
+        if (isDirectory) {
+            googlePhotosAlbum = null;
+
+            console.log('Folder');
+        }
+
+        if (isValidFile) {
+            if (!googlePhotosAlbum) {
+                googlePhotosAlbum = await createAlbum(authToken, folderName);
+                albumName = folderName;
+            }
+
+            const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
+
+            logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file });
+        }
+    }
+
+    return items;
+}
+
+function getItemsInFolder(dirPath = config.rootFolder, arrayOfFiles = []) {
+    return fs.readdirSync(dirPath)
+        .filter(name => filterHidden(name));
+}
+
+function filterHidden(fileName) {
+    return !fileName.startsWith('.');
+}
+
+function isValidFileExtension(fileName) {
+    const fileExt = getFileExtension(fileName).toUpperCase();
+
+    if (fileName.startsWith('.')) {
+        return false;
+    }
+
+    return config.validFileExtensions.find(e => e === fileExt);
+}
+
+function getFileExtension(filePath) {
+    return filePath.split('.').pop();
+}
+
+function isFolder(dirPath, current) {
+    const fullPath = `${dirPath}/${current}`;
+
+    return fs.statSync(fullPath).isDirectory();
+}
+
+async function createAlbum(authToken, albumName) {
+    // logger.info('Creating Album', {albumName});
+    //
+    // return albumName + ' - TOKEN';
+
     let body = {
         "album": {
-            "title": "new-album-" + new Date().toJSON()
+            "title": albumName + '_' + new Date().toJSON()
         }
     }
 
     try {
         const result = await request.post(config.apiEndpoint + '/v1/albums', {
             headers: { 'Content-Type': 'application/json' },
-            // qs: parameters,
             body,
             json: true,
             auth: { 'bearer': authToken },
@@ -177,27 +298,19 @@ async function createAlbums(authToken) {
 
         logger.debug('Albums created', result);
 
-        const { id: albumId } = result;
-
-        const folderPath = '/Users/sebastian/Desktop/temp-pics';
-        return await Promise.all([
-            uploadMediaToAlbum(authToken, albumId, '1.jpg', 'file-1', folderPath),
-            // uploadMediaToAlbum(authToken, albumId, '2.jpg', 'file-2', folderPath),
-            // uploadMediaToAlbum(authToken, albumId, '3.jpg', 'file-3', folderPath),
-        ])
-
-
-        return uploadMedia(authToken, albumId);
-
         return result;
     } catch (err) {
-        logger.error(error);
+        logger.error('Error creating album', err);
 
         throw err;
     }
 }
 
 async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath) {
+    logger.info('Uploading media', { albumId, folderPath, fileName, fileDescription });
+
+    // return { 'mediaUploaded': 1111, fileName };
+
     const requestDelay = 5000;
     const filePath = `${folderPath}/${fileName}`;
 
@@ -212,5 +325,12 @@ async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription,
 }
 
 
-module.exports = { returnPhotos, returnError, libraryApiSearch, libraryApiGetAlbums, createAlbums };
+module.exports = {
+    returnPhotos,
+    returnError,
+    libraryApiSearch,
+    libraryApiGetAlbums,
+    createAlbums,
+    getFolders
+};
 
