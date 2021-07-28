@@ -256,7 +256,7 @@ async function createAlbums(userId, authToken, folderLists) {
     }
 }
 
-async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, fullPath }, parentAlbumName = '') {
+async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, fullPath }, fileCount = 0, parentAlbumName = '') {
     let googlePhotosAlbum = null;
     let albumName = null;
 
@@ -271,7 +271,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
         logger.debug('createAllAlbumsAndUploadPhotos', { folderName, fullPath, file, isDirectory, isValidFile });
 
         if (isDirectory) {
-            return createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, albumName);
+            return createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, fileCount, albumName);
         }
 
         if (isValidFile) {
@@ -284,6 +284,8 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
             }
 
             const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
+
+            fileCount++;
 
             logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file, mediaUploaded });
         }
@@ -299,7 +301,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
     }
 
 
-    return items;
+    return fileCount;
 }
 
 function getItemsInFolder(dirPath = config.rootFolder, arrayOfFiles = []) {
