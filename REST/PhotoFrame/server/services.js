@@ -232,6 +232,9 @@ async function createAlbums(userId, authToken, folderLists) {
         throw new Error(`Dead Letter is not empty!. Count: ${deadletterCount}`);
     }
 
+    // Clear cached albums in order to make sure we got all new albums
+    albumCache.clearSync();
+
     try {
         const folders = await Promise.all(folderLists.map(async f => {
             return {
