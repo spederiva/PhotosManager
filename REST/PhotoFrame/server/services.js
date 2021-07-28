@@ -140,6 +140,12 @@ async function getAlbums(userId, authToken) {
     return data;
 }
 
+async function getAlbumByName(userId, authToken, albumName) {
+    const albums = await getAlbums(userId, authToken);
+
+    return albums.albums.find(a => a.title === albumName);
+}
+
 // Returns a list of all albums owner by the logged in user from the Library API.
 async function libraryApiGetAlbums(authToken) {
     let albums = [];
@@ -212,7 +218,7 @@ function getNumberOfItemsInFolder(dirPath = config.rootFolder, arrayOfFiles = []
         }, 0)
 }
 
-async function createAlbums(authToken, folderLists) {
+async function createAlbums(userId, authToken, folderLists) {
     logger.debug('Creating albums', folderLists);
 
     if (!folderLists || folderLists.length === 0) {
@@ -230,7 +236,7 @@ async function createAlbums(authToken, folderLists) {
         const folders = await Promise.all(folderLists.map(async f => {
             return {
                 ...f,
-                items: await createAllAlbumsAndUploadPhotos(authToken, f),
+                items: await createAllAlbumsAndUploadPhotos(userId, authToken, f),
             }
         }));
 
@@ -247,7 +253,7 @@ async function createAlbums(authToken, folderLists) {
     }
 }
 
-async function createAllAlbumsAndUploadPhotos(authToken, { folderName, fullPath }, parentAlbumName = '') {
+async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, fullPath }, parentAlbumName = '') {
     let googlePhotosAlbum = null;
     let albumName = null;
 
@@ -262,7 +268,7 @@ async function createAllAlbumsAndUploadPhotos(authToken, { folderName, fullPath 
         logger.debug('createAllAlbumsAndUploadPhotos', { folderName, fullPath, file, isDirectory, isValidFile });
 
         if (isDirectory) {
-            return createAllAlbumsAndUploadPhotos(authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, albumName);
+            return createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, albumName);
         }
 
         if (isValidFile) {
@@ -271,7 +277,7 @@ async function createAllAlbumsAndUploadPhotos(authToken, { folderName, fullPath 
 
                 albumName = prefixAlbumName + folderName;
 
-                googlePhotosAlbum = await createOrGetAlbum(authToken, albumName);
+                googlePhotosAlbum = await createOrGetAlbum(userId, authToken, albumName);
             }
 
             const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
@@ -322,10 +328,15 @@ function isFolder(dirPath, current) {
     return fs.statSync(fullPath).isDirectory();
 }
 
-async function createOrGetAlbum(authToken, albumName) {
+async function createOrGetAlbum(userId, authToken, albumName) {
     logger.info('Creating Album', { albumName });
 
-    // return albumName + ' - TOKEN';
+    const album = await getAlbumByName(userId, authToken, albumName);
+    if(album){
+        logger.info('Get existing Album', album);
+
+        return album;
+    }
 
     let body = {
         "album": {

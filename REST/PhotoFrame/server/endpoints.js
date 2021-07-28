@@ -133,23 +133,17 @@ const addRoutes = (app, logger, passport) => {
     });
 
     app.post('/addAlbums', async (req, res) => {
-        let userId;
-
         logger.info('Create New Albums', req.body);
 
         try {
-            userId = req.user.profile.id;
+            const token = req.user.token;
+            const userId = req.user.profile.id;
 
-            const data = await createAlbums(req.user.token, req.body.checkedFolders);
+            const data = await createAlbums(userId, token, req.body.checkedFolders);
 
             return res.status(200).send(data);
         } catch (err) {
-            if (userId) {
-                // Clear the cached albums.
-                albumCache.removeItem(userId);
-            }
-
-            // Error occured during the request. Albums could not be loaded.
+            // Error occurred during the request. Albums could not be loaded.
             return returnError(res, err);
         }
     });
