@@ -1,6 +1,6 @@
 const config = require('../config.js');
-const { storage, albumCache, mediaItemCache } = require('./cache');
-const { returnPhotos, returnError, libraryApiSearch, libraryApiGetAlbums, createAlbums, getFolders } = require('./services');
+const { storage, albumCache, mediaItemCache, clearAllCache } = require('./cache');
+const { returnPhotos, returnError, libraryApiSearch, getAlbums, createAlbums, getFolders } = require('./services');
 
 const addRoutes = (app, logger, passport) => {
 
@@ -16,6 +16,8 @@ const addRoutes = (app, logger, passport) => {
 
     // GET request to log out the user. Destroy the current session and redirect back to the log in screen.
     app.get('/logout', (req, res) => {
+        clearAllCache();
+
         req.logout();
         req.session.destroy();
         res.redirect('/');
@@ -155,32 +157,17 @@ const addRoutes = (app, logger, passport) => {
     // Returns all albums owned by the user.
     app.get('/getAlbums', async (req, res) => {
         logger.info('Loading albums');
-        const userId = req.user.profile.id;
 
-        // Attempt to load the albums from cache if available.
-        // Temporarily caching the albums makes the app more responsive.
-        const cachedAlbums = await albumCache.getItem(userId);
-        if (cachedAlbums) {
-            logger.verbose('Loaded albums from cache.');
-            res.status(200).send(cachedAlbums);
-        } else {
-            logger.verbose('Loading albums from API.');
-            // Albums not in cache, retrieve the albums from the Library API
-            // and return them
-            const data = await libraryApiGetAlbums(req.user.token);
-            if (data.error) {
-                // Error occured during the request. Albums could not be loaded.
-                returnError(res, data);
-                // Clear the cached albums.
-                albumCache.removeItem(userId);
-            } else {
-                // Albums were successfully loaded from the API. Cache them
-                // temporarily to speed up the next request and return them.
-                // The cache implementation automatically clears the data when the TTL is
-                // reached.
-                res.status(200).send(data);
-                albumCache.setItemSync(userId, data);
-            }
+        try {
+            const userId = req.user.profile.id;
+            const token = req.user.token;
+
+            const albums = await getAlbums(userId, token);
+
+            return res.status(200).send(albums);
+        } catch (err) {
+            // Error occured during the request. Albums could not be loaded.
+            return returnError(res, err);
         }
     });
 

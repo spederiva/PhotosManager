@@ -4,7 +4,7 @@ const request = require('request-promise');
 const Photos = require('googlephotos');
 const config = require('../config.js');
 const { logger } = require('./logger');
-const { storage, mediaItemCache, uploadDeadletter } = require('./cache');
+const { storage, mediaItemCache, uploadDeadletter, albumCache } = require('./cache');
 
 
 // If the supplied result is succesful, the parameters and media items are
@@ -113,6 +113,33 @@ async function libraryApiSearch(authToken, parameters) {
     return { photos, parameters, error };
 }
 
+async function getAlbums(userId, authToken) {
+    // Attempt to load the albums from cache if available. Temporarily caching the albums makes the app more responsive.
+    const cachedAlbums = await albumCache.getItem(userId);
+    if (cachedAlbums) {
+        logger.verbose('Loaded albums from cache.');
+
+        return cachedAlbums;
+    }
+
+    logger.verbose('Loading albums from API.');
+
+    // Albums not in cache, retrieve the albums from the Library API and return them
+    const data = await libraryApiGetAlbums(authToken);
+
+    if (data.error) {
+        // Clear the cached albums.
+        albumCache.removeItem(userId);
+
+        // Error occurred during the request. Albums could not be loaded.
+        throw data;
+    }
+
+    albumCache.setItemSync(userId, data);
+
+    return data;
+}
+
 // Returns a list of all albums owner by the logged in user from the Library API.
 async function libraryApiGetAlbums(authToken) {
     let albums = [];
@@ -138,10 +165,9 @@ async function libraryApiGetAlbums(authToken) {
 
             if (result && result.albums) {
                 logger.verbose(`Number of albums received: ${result.albums.length}`);
-                // Parse albums and add them to the list, skipping empty entries.
-                const items = result.albums.filter(x => !!x);
 
-                albums = albums.concat(items);
+                // Parse albums and add them to the list, skipping empty entries.
+                albums = albums.concat(result.albums.filter(x => !!x));
             }
             parameters.pageToken = result.nextPageToken;
             // Loop until all albums have been listed and no new nextPageToken is
@@ -152,8 +178,8 @@ async function libraryApiGetAlbums(authToken) {
         // If the error is a StatusCodeError, it contains an error.error object that
         // should be returned. It has a name, statuscode and message in the correct
         // format. Otherwise extract the properties.
-        error = err.error.error ||
-            { name: err.name, code: err.statusCode, message: err.message };
+        error = err.error.error || { name: err.name, code: err.statusCode, message: err.message };
+
         logger.error(error);
     }
 
@@ -196,7 +222,7 @@ async function createAlbums(authToken, folderLists) {
     }
 
     const deadletterCount = (await getDeadletterKeys()).length;
-    if(deadletterCount > 0){
+    if (deadletterCount > 0) {
         throw new Error(`Dead Letter is not empty!. Count: ${deadletterCount}`);
     }
 
@@ -260,7 +286,7 @@ async function createAllAlbumsAndUploadPhotos(authToken, { folderName, fullPath 
     for (const key of deadletter) {
         const dl = await getAndRemoveFromDeadletter(key);
 
-        await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, 5000);
+        await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, 600000);
     }
 
 
@@ -325,7 +351,7 @@ async function createOrGetAlbum(authToken, albumName) {
     }
 }
 
-async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = 1000) {
+async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = 60000) {
     logger.info('Uploading media', { albumId, folderPath, fileName, fileDescription });
 
     // return { 'mediaUploaded': 1111, fileName };
@@ -352,7 +378,7 @@ async function getDeadletterKeys() {
     return deadletter;
 }
 
-async function getAndRemoveFromDeadletter(key){
+async function getAndRemoveFromDeadletter(key) {
     const data = await uploadDeadletter.getItem(key);
 
     await uploadDeadletter.removeItem(key);
@@ -364,7 +390,7 @@ module.exports = {
     returnPhotos,
     returnError,
     libraryApiSearch,
-    libraryApiGetAlbums,
+    getAlbums,
     createAlbums,
     getFolders
 };
