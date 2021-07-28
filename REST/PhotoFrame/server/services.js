@@ -6,6 +6,13 @@ const config = require('../config.js');
 const { logger } = require('./logger');
 const { storage, mediaItemCache, uploadDeadletter, albumCache } = require('./cache');
 
+const CHUNK_SIZE = 5;
+const WAITING_AFTER_ITEM_UPLOAD = 500;
+const WAITING_AFTER_CHUNK_UPLOAD = 5000;
+
+const UPLOAD_MEDIA_TIMEOUT = 1 * 60000;
+const UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT = 60 * 60000;
+
 
 // If the supplied result is succesful, the parameters and media items are
 // cached.
@@ -227,6 +234,12 @@ async function createAlbums(userId, authToken, folderLists) {
         throw new Error('No Folder selected');
     }
 
+    if (!folderLists || folderLists.length > 5) {
+        logger.info('Too many albums selected', folderLists);
+
+        throw new Error('Too many albums selected');
+    }
+
     const deadletterCount = (await getDeadletterKeys()).length;
     if (deadletterCount > 0) {
         throw new Error(`Dead Letter is not empty!. Count: ${deadletterCount}`);
@@ -256,6 +269,19 @@ async function createAlbums(userId, authToken, folderLists) {
     }
 }
 
+async function handleDeadLetter(authToken) {
+    const deadletter = await getDeadletterKeys();
+    logger.info('Uploading Dead Letter', deadletter);
+
+    for (const key of deadletter) {
+        const dl = await getAndRemoveFromDeadletter(key);
+
+        await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
+
+        await sleep(WAITING_AFTER_ITEM_UPLOAD * 3);
+    }
+}
+
 async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, fullPath }, fileCount = 0, parentAlbumName = '') {
     let googlePhotosAlbum = null;
     let albumName = null;
@@ -264,41 +290,42 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
 
     logger.info('Creating album and uploading photos', { folderName, fullPath, parentAlbumName, count: items.length });
 
-    for (const file of items) {
-        const isDirectory = isFolder(fullPath, file);
-        const isValidFile = isValidFileExtension(file);
+    const chunks = _.chunk(items, CHUNK_SIZE);
+    for (const chunk of chunks) {
+        for (const file of chunk) {
+            const isDirectory = isFolder(fullPath, file);
+            const isValidFile = isValidFileExtension(file);
 
-        logger.debug('createAllAlbumsAndUploadPhotos', { folderName, fullPath, file, isDirectory, isValidFile });
+            logger.debug('createAllAlbumsAndUploadPhotos', { folderName, fullPath, file, isDirectory, isValidFile });
 
-        if (isDirectory) {
-            return createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, fileCount, albumName);
-        }
-
-        if (isValidFile) {
-            if (!googlePhotosAlbum) {
-                const prefixAlbumName = parentAlbumName ? `${parentAlbumName} - ` : '';
-
-                albumName = prefixAlbumName + folderName;
-
-                googlePhotosAlbum = await createOrGetAlbum(userId, authToken, albumName);
+            if (isDirectory) {
+                return await createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, fileCount, albumName);
             }
 
-            const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
+            if (isValidFile) {
+                if (!googlePhotosAlbum) {
+                    const prefixAlbumName = parentAlbumName ? `${parentAlbumName} - ` : '';
 
-            fileCount++;
+                    albumName = prefixAlbumName + folderName;
 
-            logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file, mediaUploaded });
+                    googlePhotosAlbum = await createOrGetAlbum(userId, authToken, albumName);
+                }
+
+                const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
+
+                fileCount++;
+
+                logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file, mediaUploaded });
+
+                await sleep(WAITING_AFTER_ITEM_UPLOAD);
+            }
         }
+
+        await sleep(WAITING_AFTER_CHUNK_UPLOAD);
     }
 
-    const deadletter = await getDeadletterKeys();
-    logger.info('Uploading Dead Letter', deadletter);
 
-    for (const key of deadletter) {
-        const dl = await getAndRemoveFromDeadletter(key);
-
-        await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, 600000);
-    }
+    await handleDeadLetter(authToken);
 
 
     return fileCount;
@@ -337,7 +364,7 @@ async function createOrGetAlbum(userId, authToken, albumName) {
     logger.info('Creating Album', { albumName });
 
     const album = await getAlbumByName(userId, authToken, albumName);
-    if(album){
+    if (album) {
         logger.info('Get existing Album', album);
 
         return album;
@@ -367,7 +394,7 @@ async function createOrGetAlbum(userId, authToken, albumName) {
     }
 }
 
-async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = 60000) {
+async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = UPLOAD_MEDIA_TIMEOUT) {
     logger.info('Uploading media', { albumId, folderPath, fileName, fileDescription });
 
     // return { 'mediaUploaded': 1111, fileName };
@@ -382,9 +409,9 @@ async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription,
 
         return response;
     } catch (err) {
-        logger.error('Error uploading file', { albumId, fileName }, err);
+        logger.error('Error uploading file', { albumId, fileName, err });
 
-        uploadDeadletter.setItemSync(Date.now().toString(), JSON.stringify({ albumId, fileName, fileDescription, folderPath }));
+        uploadDeadletter.setItemSync(Date.now().toString(), { albumId, fileName, fileDescription, folderPath });
     }
 }
 
@@ -399,7 +426,11 @@ async function getAndRemoveFromDeadletter(key) {
 
     await uploadDeadletter.removeItem(key);
 
-    return JSON.parse(data);
+    return data;
+}
+
+async function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 module.exports = {
