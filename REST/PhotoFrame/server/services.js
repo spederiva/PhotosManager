@@ -213,13 +213,13 @@ async function createAlbums(authToken, folderLists) {
     }
 }
 
-async function createAlbumAndUploadPhotos(authToken, { folderName, fullPath }) {
+async function createAlbumAndUploadPhotos(authToken, { folderName, fullPath }, parentAlbumName = '') {
     let googlePhotosAlbum = null;
     let albumName = null;
 
     const items = getItemsInFolder(fullPath);
 
-    logger.info('Creating album and uploading photos', { folderName, fullPath, count: items.length });
+    logger.info('Creating album and uploading photos', { folderName, fullPath, parentAlbumName, count: items.length });
 
     for (const file of items) {
         const isDirectory = isFolder(fullPath, file);
@@ -228,20 +228,24 @@ async function createAlbumAndUploadPhotos(authToken, { folderName, fullPath }) {
         logger.debug('createAlbumAndUploadPhotos', { folderName, fullPath, file, isDirectory, isValidFile });
 
         if (isDirectory) {
-            googlePhotosAlbum = null;
+            console.log('Folder', fullPath, file);
 
-            console.log('Folder');
+            return createAlbumAndUploadPhotos(authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, albumName);
         }
 
         if (isValidFile) {
             if (!googlePhotosAlbum) {
-                googlePhotosAlbum = await createAlbum(authToken, folderName);
-                albumName = folderName;
+                const prefixAlbumName = parentAlbumName ? `${parentAlbumName} - ` : '';
+
+                albumName = prefixAlbumName + folderName;
+
+                googlePhotosAlbum = await createAlbum(authToken, albumName);
+
             }
 
             const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
 
-            logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file });
+            logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file, mediaUploaded });
         }
     }
 
@@ -278,8 +282,8 @@ function isFolder(dirPath, current) {
 }
 
 async function createAlbum(authToken, albumName) {
-    // logger.info('Creating Album', {albumName});
-    //
+    logger.info('Creating Album', { albumName });
+
     // return albumName + ' - TOKEN';
 
     let body = {
@@ -318,8 +322,6 @@ async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription,
 
     const uploadToken = await photos.transport.upload(fileName, filePath, requestDelay);
     const response = await photos.mediaItems.albumBatchCreate(albumId, fileName, fileDescription, uploadToken);
-
-    logger.debug('Media uploaded', { filePath, fileName, fileDescription, response });
 
     return response;
 }
