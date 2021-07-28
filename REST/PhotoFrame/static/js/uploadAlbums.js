@@ -98,6 +98,8 @@ function listAlbums() {
 }
 
 function addAlbum() {
+    hideLoadingDialog();
+
     const checkedFolders = $("input[name='folders']:checked")
         .map((idx, inp) => ({ folderName: inp.value, fullPath: inp.getAttribute('fullPath') }))
         .toArray();
@@ -116,7 +118,7 @@ function addAlbum() {
         dataType: 'json',
         data: { checkedFolders },
         success: (data) => {
-            showMessage('Everything OK', 'Folder and photos were upload succesfully!');
+            showMessage('Everything OK', `${data.folders.length} folder/s and photos were upload successfully!. Dead Letter: ${data.deadletterCount}`);
         },
         error: (data) => {
             handleError('Couldn\'t import album', data);

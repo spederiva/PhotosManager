@@ -50,6 +50,6 @@ config.apiEndpoint = 'https://photoslibrary.googleapis.com';
 
 config.rootFolder = '/Users/sebastian/Desktop/temp-pics';
 
-config.validFileExtensions = ['JPG'].map(e => e.toUpperCase())
+config.validFileExtensions = ['JPG', 'MP4', 'AVI'].map(e => e.toUpperCase())
 
 module.exports = config;

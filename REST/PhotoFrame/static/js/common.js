@@ -26,7 +26,9 @@ function hideLoadingDialog() {
 
 // Shows an error with a title and a JSON object that is pretty printed.
 function showJsonError(title, json) {
-  showError(title, JSON.stringify(json, null, 2));
+  const message = json && json.error && json.error.message;
+
+  showError(title, message || JSON.stringify(json, null, 2));
 }
 
 // Shows an error with a title and text. Scrolls the screen to show the error.
@@ -66,6 +68,8 @@ function hideError() {
 function handleError(title, data) {
   console.log('Error: ' + JSON.stringify(data));
 
+  hideLoadingDialog();
+
   if (data.status == 401) {
     // Authentication error. Redirect back to the log in screen.
     window.location = '/logout';
@@ -78,7 +82,6 @@ function handleError(title, data) {
     showJsonError(title, data.responseJSON);
   } else {
     // Otherwise, display the data returned by the request.
-    showError(title, data);
+    showError(title, data.responseText || data);
   }
-  hideLoadingDialog();
 }

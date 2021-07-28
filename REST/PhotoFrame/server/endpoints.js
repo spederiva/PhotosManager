@@ -131,17 +131,21 @@ const addRoutes = (app, logger, passport) => {
     });
 
     app.post('/addAlbums', async (req, res) => {
-        const userId = req.user.profile.id;
+        let userId;
 
         logger.info('Create New Albums', req.body);
 
         try {
+            userId = req.user.profile.id;
+
             const data = await createAlbums(req.user.token, req.body.checkedFolders);
 
             return res.status(200).send(data);
         } catch (err) {
-            // Clear the cached albums.
-            albumCache.removeItem(userId);
+            if (userId) {
+                // Clear the cached albums.
+                albumCache.removeItem(userId);
+            }
 
             // Error occured during the request. Albums could not be loaded.
             return returnError(res, err);
@@ -227,7 +231,7 @@ const addRoutes = (app, logger, passport) => {
             const data = getFolders();
 
             return res.status(200).send(data);
-        } catch (err){
+        } catch (err) {
             logger.error('Error loading folders', err);
 
             return returnError(res, err);
