@@ -189,6 +189,8 @@ function getNumberOfItemsInFolder(dirPath = config.rootFolder, arrayOfFiles = []
 async function createAlbums(authToken, folderLists) {
     logger.debug('Creating albums', folderLists);
 
+    return {};
+
     if (!folderLists || folderLists.length === 0) {
         logger.info('Albums empty', folderLists);
 
@@ -239,8 +241,7 @@ async function createAlbumAndUploadPhotos(authToken, { folderName, fullPath }, p
 
                 albumName = prefixAlbumName + folderName;
 
-                googlePhotosAlbum = await createAlbum(authToken, albumName);
-
+                googlePhotosAlbum = await createOrGetAlbum(authToken, albumName);
             }
 
             const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
@@ -281,14 +282,14 @@ function isFolder(dirPath, current) {
     return fs.statSync(fullPath).isDirectory();
 }
 
-async function createAlbum(authToken, albumName) {
+async function createOrGetAlbum(authToken, albumName) {
     logger.info('Creating Album', { albumName });
 
     // return albumName + ' - TOKEN';
 
     let body = {
         "album": {
-            "title": albumName + '_' + new Date().toJSON()
+            "title": albumName
         }
     }
 

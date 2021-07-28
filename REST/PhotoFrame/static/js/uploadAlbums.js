@@ -104,24 +104,19 @@ function addAlbum() {
 
     console.log('Folders', checkedFolders);
 
+    if(checkedFolders.length === 0){
+        showError('No Folder Selected', 'Please select at least one folder');
+
+        return;
+    }
+
     $.ajax({
         type: 'POST',
         url: '/addAlbums',
         dataType: 'json',
         data: { checkedFolders },
         success: (data) => {
-            console.log(data);
-            return;
-
-            if (data.photos && data.photos.length) {
-                // Photos were loaded from the album, open the photo frame preview
-                // queue.
-                window.location = '/';
-            } else {
-                // No photos were loaded. Display an error.
-                handleError('Couldn\'t import album', 'Album is empty.');
-            }
-            hideLoadingDialog();
+            showMessage('Everything OK', 'Folder and photos were upload succesfully!');
         },
         error: (data) => {
             handleError('Couldn\'t import album', data);

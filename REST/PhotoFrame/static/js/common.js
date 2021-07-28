@@ -20,6 +20,8 @@ function showLoadingDialog() {
 // Hides the overlay loading dialog.
 function hideLoadingDialog() {
   $('.loading-dialog').hide();
+  $('#error').hide();
+  $('#message').hide();
 }
 
 // Shows an error with a title and a JSON object that is pretty printed.
@@ -35,6 +37,18 @@ function showError(title, text) {
   $('#errorTitle').text(title);
   $('#errorMessage').text(text);
   $('#error').show();
+
+  // Scroll to show the error message on screen.
+  $('html,body').animate({scrollTop: $('#error').offset().top}, 300);
+}
+
+function showMessage(title, text) {
+  // Hide the loading dialog, just in case it is still being displayed.
+  hideLoadingDialog();
+
+  $('#messageTitle').text(title);
+  $('#messageMessage').text(text);
+  $('#message').show();
 
   // Scroll to show the error message on screen.
   $('html,body').animate({scrollTop: $('#error').offset().top}, 300);

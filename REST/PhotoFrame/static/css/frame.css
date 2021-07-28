@@ -109,6 +109,11 @@ pre {
   padding: 1.25% 7.5%;
 }
 
+#message {
+  background: aquamarine;
+  padding: 1.25% 7.5%;
+}
+
 /*login*/
 
 #images-container,
@@ -230,4 +235,8 @@ p .gp-button {
 
 .filter-group:last-child {
   padding-bottom: 2vh;
+}
+
+.demo-main{
+  width: 100%;
 }
