@@ -270,15 +270,22 @@ async function createAlbums(userId, authToken, folderLists) {
 }
 
 async function handleDeadLetter(authToken) {
-    const deadletter = await getDeadletterKeys();
-    logger.info('Uploading Dead Letter', deadletter);
+    for (let tries = 0; tries < 3; tries++) {
+        const deadletter = await getDeadletterKeys();
 
-    for (const key of deadletter) {
-        const dl = await getAndRemoveFromDeadletter(key);
+        logger.info(`Uploading Dead Letter. Try: ${tries}`, deadletter);
 
-        await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
+        for (const key of deadletter) {
+            const dl = await getAndRemoveFromDeadletter(key);
 
-        await sleep(WAITING_AFTER_ITEM_UPLOAD * 3);
+            if (!dl) {
+                continue;
+            }
+
+            await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
+
+            await sleep(WAITING_AFTER_ITEM_UPLOAD * 3);
+        }
     }
 }
 
@@ -409,9 +416,13 @@ async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription,
 
         return response;
     } catch (err) {
-        logger.error('Error uploading file', { albumId, fileName, err });
+        logger.error('Error uploading file', { albumId, fileName, error: { ...err, message: err.message } });
 
-        uploadDeadletter.setItemSync(Date.now().toString(), { albumId, fileName, fileDescription, folderPath });
+        if (err.message === 'Unauthorized') {
+            throw err;
+        }
+
+        uploadDeadletter.setItemSync(Date.now().toString(), { albumId, fileName, fileDescription, folderPath, err: err && err.message });
     }
 }
 
