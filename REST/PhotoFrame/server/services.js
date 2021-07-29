@@ -6,7 +6,8 @@ const config = require('../config.js');
 const { logger } = require('./logger');
 const { storage, mediaItemCache, uploadDeadletter, albumCache } = require('./cache');
 
-const CHUNK_SIZE = 5;
+const CHUNK_SIZE_ALBUMS = 3;
+const CHUNK_SIZE_ITEMS = 10;
 const WAITING_AFTER_ITEM_UPLOAD = 500;
 const WAITING_AFTER_CHUNK_UPLOAD = 5000;
 
@@ -249,17 +250,26 @@ async function createAlbums(userId, authToken, folderLists) {
     albumCache.clearSync();
 
     try {
-        const folders = await Promise.all(folderLists.map(async f => {
-            return {
-                ...f,
-                items: await createAllAlbumsAndUploadPhotos(userId, authToken, f),
-            }
-        }));
+        const foldersResult = [];
+        const chunks = _.chunk(folderLists, CHUNK_SIZE_ALBUMS);
 
-        logger.info('Albums with photos created', folders);
+        logger.debug(`Creating albums. Split in ${chunks.length}`);
+
+        for (const chunk of chunks) {
+            const folders = await Promise.all(chunk.map(async f => {
+                return {
+                    ...f,
+                    items: await createAllAlbumsAndUploadPhotos(userId, authToken, f),
+                }
+            }));
+
+            foldersResult.push(...folders);
+
+            logger.info('Albums with photos created', folders);
+        }
 
         return {
-            folders,
+            foldersResult,
             deadletterCount: (await getDeadletterKeys()).length
         };
     } catch (err) {
@@ -297,7 +307,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
 
     logger.info('Creating album and uploading photos', { folderName, fullPath, parentAlbumName, count: items.length });
 
-    const chunks = _.chunk(items, CHUNK_SIZE);
+    const chunks = _.chunk(items, CHUNK_SIZE_ITEMS);
     for (const chunk of chunks) {
         for (const file of chunk) {
             const isDirectory = isFolder(fullPath, file);

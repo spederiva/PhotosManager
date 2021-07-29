@@ -135,6 +135,10 @@ const addRoutes = (app, logger, passport) => {
     app.post('/addAlbums', async (req, res) => {
         logger.info('Create New Albums', req.body);
 
+        const data = {"foldersResult":[{"folderName":"1","fullPath":"/Users/sebastian/Desktop/temp-pics/1","items":2},{"folderName":"2","fullPath":"/Users/sebastian/Desktop/temp-pics/2","items":3},{"folderName":"others","fullPath":"/Users/sebastian/Desktop/temp-pics/others","items":6}],"deadletterCount":0};
+        return res.status(200).send(data);
+
+
         try {
             const token = req.user.token;
             const userId = req.user.profile.id;

@@ -118,9 +118,9 @@ function addAlbum() {
         dataType: 'json',
         data: { checkedFolders },
         success: (data) => {
-            const itemsUploaded = data.folders.reduce( (agg, curr) => agg + curr.items, 0 );
+            const itemsUploaded = data.foldersResult.reduce( (agg, curr) => agg + curr.items, 0 );
 
-            showMessage('Everything OK', `${data.folders.length} folder/s and ${itemsUploaded} photos were upload successfully!. Dead Letter: ${data.deadletterCount}`);
+            showMessage('Everything OK', `${data.foldersResult.length} folder/s and ${itemsUploaded} photos were upload successfully!. Dead Letter: ${data.deadletterCount}`);
         },
         error: (data) => {
             handleError('Couldn\'t import album', data);
