@@ -235,7 +235,7 @@ async function createAlbums(userId, authToken, folderLists) {
         throw new Error('No Folder selected');
     }
 
-    if (!folderLists || folderLists.length > 5) {
+    if (!folderLists || folderLists.length > 50) {
         logger.info('Too many albums selected', folderLists);
 
         throw new Error('Too many albums selected');
