@@ -341,7 +341,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
                     googlePhotosAlbum = await createOrGetAlbum(userId, authToken, albumName);
                 }
 
-                const mediaUploaded = await uploadMediaToAlbum('authToken', googlePhotosAlbum.id, file, folderName, fullPath);
+                const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
 
                 fileCount++;
 
