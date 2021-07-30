@@ -299,19 +299,17 @@ async function handleDeadLetter(authToken, numberOfTries = 3, CHUNK_SIZE_ITEMS) 
 }
 
 async function uploadMediaFromDeadletter(key, authToken) {
-    console.log(Date.now(), key);
+    const dl = await getAndRemoveFromDeadletter(key);
 
-    // const dl = await getAndRemoveFromDeadletter(key);
-    //
-    // if (!dl) {
-    //     return;
-    // }
-    //
-    // const media = await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
+    if (!dl) {
+        return;
+    }
+
+    const media = await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
 
     await sleep(WAITING_AFTER_ITEM_UPLOAD * 10);
 
-    // return media;
+    return media;
 }
 
 async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, fullPath }, fileCount = 0, parentAlbumName = '') {
