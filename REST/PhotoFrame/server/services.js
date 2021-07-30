@@ -295,7 +295,7 @@ async function handleDeadLetter(authToken, numberOfTries = 3, CHUNK_SIZE_ITEMS) 
         }
     }
 
-    return getDeadletterKeys();
+    return getDeadletterKeys() || 0;
 }
 
 async function uploadMediaFromDeadletter(key, authToken) {
@@ -427,7 +427,7 @@ async function createOrGetAlbum(userId, authToken, albumName) {
 async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = UPLOAD_MEDIA_TIMEOUT) {
     logger.info('Uploading media', { albumId, folderPath, fileName, fileDescription });
 
-    const filePath = `${folderPath}/${fileName}`;
+     const filePath = `${folderPath}/${fileName}`;
 
     const photos = new Photos(authToken);
 
