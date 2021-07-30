@@ -156,7 +156,7 @@ const addRoutes = (app, logger, passport) => {
 
             const data = await handleDeadLetter(token, 2);
 
-            return res.status(200).send({ OK: true });
+            return res.status(200).send({ deadletterLeftCounter: data || 0 });
         } catch (err) {
             // Error occurred during the request. Albums could not be loaded.
             return returnError(res, err);

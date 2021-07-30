@@ -4,7 +4,7 @@ const request = require('request-promise');
 const Photos = require('googlephotos');
 const config = require('../config.js');
 const { logger } = require('./logger');
-const { storage, mediaItemCache, uploadDeadletter, albumCache } = require('./cache');
+const { storage, mediaItemCache, uploadDeadletter, albumCache, uploadFolderCache } = require('./cache');
 
 const CHUNK_SIZE_ALBUMS = 3;
 const CHUNK_SIZE_ITEMS = 10;
@@ -241,7 +241,7 @@ async function createAlbums(userId, authToken, folderLists) {
         throw new Error('Too many albums selected');
     }
 
-    const deadletterCount = (await getDeadletterKeys()).length;
+    const deadletterCount = await handleDeadLetter(authToken, 3, 5);
     if (deadletterCount > 0) {
         throw new Error(`Dead Letter is not empty!. Count: ${deadletterCount}`);
     }
@@ -279,28 +279,37 @@ async function createAlbums(userId, authToken, folderLists) {
     }
 }
 
-async function handleDeadLetter(authToken, numberOfTries = 3) {
+async function handleDeadLetter(authToken, numberOfTries = 3, CHUNK_SIZE_ITEMS) {
     for (let tries = 0; tries < numberOfTries; tries++) {
         const deadletter = await getDeadletterKeys();
 
         logger.info(`Uploading Dead Letter. Try: ${tries + 1}`, deadletter);
 
-        if(deadletter.length === 0){
-            return;
+        if (deadletter.length === 0) {
+            return 0;
         }
 
-        for (const key of deadletter) {
-            const dl = await getAndRemoveFromDeadletter(key);
-
-            if (!dl) {
-                continue;
-            }
-
-            await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
-
-            await sleep(WAITING_AFTER_ITEM_UPLOAD * 3);
+        const chunks = _.chunk(deadletter, CHUNK_SIZE_ITEMS || deadletter.length);
+        for (const chunk of chunks) {
+            await Promise.all(chunk.map(key => uploadMediaFromDeadletter(key, authToken)));
         }
     }
+
+    return getDeadletterKeys();
+}
+
+async function uploadMediaFromDeadletter(key, authToken) {
+    const dl = await getAndRemoveFromDeadletter(key);
+
+    if (!dl) {
+        return;
+    }
+
+    const media = await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
+
+    await sleep(WAITING_AFTER_ITEM_UPLOAD * 3);
+
+    return media;
 }
 
 async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, fullPath }, fileCount = 0, parentAlbumName = '') {
@@ -418,8 +427,6 @@ async function createOrGetAlbum(userId, authToken, albumName) {
 async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = UPLOAD_MEDIA_TIMEOUT) {
     logger.info('Uploading media', { albumId, folderPath, fileName, fileDescription });
 
-    // return { 'mediaUploaded': 1111, fileName };
-
     const filePath = `${folderPath}/${fileName}`;
 
     const photos = new Photos(authToken);
@@ -431,10 +438,6 @@ async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription,
         return response;
     } catch (err) {
         logger.error('Error uploading file', { albumId, fileName, error: { ...err, message: err.message } });
-
-        if (err.message === 'Unauthorized') {
-            throw err;
-        }
 
         uploadDeadletter.setItemSync(Date.now().toString(), { albumId, fileName, fileDescription, folderPath, err: err && err.message });
     }

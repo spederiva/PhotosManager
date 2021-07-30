@@ -95,6 +95,12 @@ function processDeadletter() {
         success: (data) => {
             hideLoadingDialog();
 
+            if(data.deadletterLeftCounter > 0){
+                handleError(`Dead Letter not empty', 'Please take care to empty the dead letter. Counter: ${data.deadletterLeftCounter}`);
+
+                return;
+            }
+
             listAlbums();
         },
         error: (data) => {
