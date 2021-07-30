@@ -1,6 +1,6 @@
 const config = require('../config.js');
 const { storage, albumCache, mediaItemCache, clearAllCache } = require('./cache');
-const { returnPhotos, returnError, libraryApiSearch, getAlbums, createAlbums, getFolders } = require('./services');
+const { returnPhotos, returnError, libraryApiSearch, getAlbums, createAlbums, getFolders, handleDeadLetter } = require('./services');
 
 const addRoutes = (app, logger, passport) => {
 
@@ -142,6 +142,21 @@ const addRoutes = (app, logger, passport) => {
             const data = await createAlbums(userId, token, req.body.checkedFolders);
 
             return res.status(200).send(data);
+        } catch (err) {
+            // Error occurred during the request. Albums could not be loaded.
+            return returnError(res, err);
+        }
+    });
+
+    app.post('/processDeadletter', async (req, res) => {
+        logger.info('Process Dead Letter', req.body);
+
+        try {
+            const token = req.user.token;
+
+            const data = await handleDeadLetter(token, 2);
+
+            return res.status(200).send({ OK: true });
         } catch (err) {
             // Error occurred during the request. Albums could not be loaded.
             return returnError(res, err);

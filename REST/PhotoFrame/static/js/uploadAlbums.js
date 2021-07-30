@@ -1,53 +1,7 @@
-// Copyright 2018 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// Notifies the backend to load an album into the photo frame queue.
-// If the request is successful, the photo frame queue is opened,
-// otherwise an error message is shown.
-function loadFromAlbum(name, id) {
-    showLoadingDialog();
-    // Make an ajax request to the backend to load from an album.
-    $.ajax({
-        type: 'POST',
-        url: '/loadFromAlbum',
-        dataType: 'json',
-        data: { albumId: id },
-        success: (data) => {
-            console.log('Albums imported:' + JSON.stringify(data.parameters));
-            if (data.photos && data.photos.length) {
-                // Photos were loaded from the album, open the photo frame preview
-                // queue.
-                window.location = '/';
-            } else {
-                // No photos were loaded. Display an error.
-                handleError('Couldn\'t import album', 'Album is empty.');
-            }
-            hideLoadingDialog();
-        },
-        error: (data) => {
-            handleError('Couldn\'t import album', data);
-        }
-    });
-}
-
-// Loads a list of all albums owned by the logged in user from the backend.
-// The backend returns a list of albums from the Library API that is rendered
-// here in a list with a cover image, title and a link to open it in Google
-// Photos.
 function listAlbums() {
     hideError();
     showLoadingDialog();
+
     $('#albums').empty();
 
     $.ajax({
@@ -98,7 +52,7 @@ function listAlbums() {
 }
 
 function addAlbum() {
-    hideLoadingDialog();
+    showLoadingDialog('Adding selected albums!');
 
     const checkedFolders = $("input[name='folders']:checked")
         .map((idx, inp) => ({ folderName: inp.value, fullPath: inp.getAttribute('fullPath') }))
@@ -118,6 +72,8 @@ function addAlbum() {
         dataType: 'json',
         data: { checkedFolders },
         success: (data) => {
+            hideLoadingDialog();
+
             const itemsUploaded = data.foldersResult.reduce( (agg, curr) => agg + curr.items, 0 );
 
             showMessage('Everything OK', `${data.foldersResult.length} folder/s and ${itemsUploaded} photos were upload successfully!. Dead Letter: ${data.deadletterCount}`);
@@ -128,18 +84,25 @@ function addAlbum() {
     });
 }
 
-$(document).ready(() => {
-    // Load the list of albums from the backend when the page is ready.
-    listAlbums();
+function processDeadletter() {
+    showLoadingDialog('Process Dead Letter!');
 
-    // Clicking the 'add to frame' button starts an import request.
-    $('#albums').on('click', '.album-title', (event) => {
-        const target = $(event.currentTarget);
-        const albumId = target.attr('data-id');
-        const albumTitle = target.attr('data-title');
+    $.ajax({
+        type: 'POST',
+        url: '/processDeadletter',
+        dataType: 'json',
+        data: {  },
+        success: (data) => {
+            hideLoadingDialog();
 
-        console.log('Importing album: ' + albumTitle);
-
-        loadFromAlbum(albumTitle, albumId);
+            listAlbums();
+        },
+        error: (data) => {
+            handleError('Couldn\'t process dead letter', 'Try again refreshing the page');
+        }
     });
+}
+
+$(document).ready(() => {
+    processDeadletter();
 });

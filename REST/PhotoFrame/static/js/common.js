@@ -13,7 +13,9 @@
 // limitations under the License.
 
 // Displays the overlay loading dialog.
-function showLoadingDialog() {
+function showLoadingDialog(text = 'Loading ...') {
+  $('.loading-dialog h1').text(text);
+
   $('.loading-dialog').show();
 }
 

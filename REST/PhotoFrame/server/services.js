@@ -279,11 +279,15 @@ async function createAlbums(userId, authToken, folderLists) {
     }
 }
 
-async function handleDeadLetter(authToken) {
-    for (let tries = 0; tries < 3; tries++) {
+async function handleDeadLetter(authToken, numberOfTries = 3) {
+    for (let tries = 0; tries < numberOfTries; tries++) {
         const deadletter = await getDeadletterKeys();
 
-        logger.info(`Uploading Dead Letter. Try: ${tries}`, deadletter);
+        logger.info(`Uploading Dead Letter. Try: ${tries + 1}`, deadletter);
+
+        if(deadletter.length === 0){
+            return;
+        }
 
         for (const key of deadletter) {
             const dl = await getAndRemoveFromDeadletter(key);
@@ -460,6 +464,7 @@ module.exports = {
     libraryApiSearch,
     getAlbums,
     createAlbums,
-    getFolders
+    getFolders,
+    handleDeadLetter
 };
 
