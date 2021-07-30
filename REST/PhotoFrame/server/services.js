@@ -425,7 +425,7 @@ async function createOrGetAlbum(userId, authToken, albumName) {
 }
 
 async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = UPLOAD_MEDIA_TIMEOUT) {
-    logger.info('Uploading media', { albumId, folderPath, fileName, fileDescription });
+    logger.info('Uploading media', { albumId, folderPath, fileName, fileDescription, timeout });
 
      const filePath = `${folderPath}/${fileName}`;
 
