@@ -292,6 +292,8 @@ async function handleDeadLetter(authToken, numberOfTries = 1, CHUNK_SIZE_ITEMS) 
         const chunks = _.chunk(deadletter, CHUNK_SIZE_ITEMS || 1);
         for (const chunk of chunks) {
             await Promise.all(chunk.map(key => uploadMediaFromDeadletter(key, authToken)));
+
+            await sleep(WAITING_AFTER_ITEM_UPLOAD * CHUNK_SIZE_ITEMS / 2);
         }
     }
 
@@ -306,8 +308,6 @@ async function uploadMediaFromDeadletter(key, authToken) {
     }
 
     const media = await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
-
-    await sleep(WAITING_AFTER_ITEM_UPLOAD * 10);
 
     return media;
 }
