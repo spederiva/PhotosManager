@@ -241,7 +241,7 @@ async function createAlbums(userId, authToken, folderLists) {
         throw new Error('Too many albums selected');
     }
 
-    const deadletterCount = await handleDeadLetter(authToken, 3, 5);
+    const deadletterCount = await handleDeadLetter(authToken, 3, 10);
     if (deadletterCount > 0) {
         throw new Error(`Dead Letter is not empty!. Count: ${deadletterCount}`);
     }
@@ -289,7 +289,7 @@ async function handleDeadLetter(authToken, numberOfTries = 3, CHUNK_SIZE_ITEMS) 
             return 0;
         }
 
-        const chunks = _.chunk(deadletter, CHUNK_SIZE_ITEMS || deadletter.length);
+        const chunks = _.chunk(deadletter, CHUNK_SIZE_ITEMS || 1);
         for (const chunk of chunks) {
             await Promise.all(chunk.map(key => uploadMediaFromDeadletter(key, authToken)));
         }
@@ -299,17 +299,19 @@ async function handleDeadLetter(authToken, numberOfTries = 3, CHUNK_SIZE_ITEMS) 
 }
 
 async function uploadMediaFromDeadletter(key, authToken) {
-    const dl = await getAndRemoveFromDeadletter(key);
+    console.log(Date.now(), key);
 
-    if (!dl) {
-        return;
-    }
+    // const dl = await getAndRemoveFromDeadletter(key);
+    //
+    // if (!dl) {
+    //     return;
+    // }
+    //
+    // const media = await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
 
-    const media = await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
+    await sleep(WAITING_AFTER_ITEM_UPLOAD * 10);
 
-    await sleep(WAITING_AFTER_ITEM_UPLOAD * 3);
-
-    return media;
+    // return media;
 }
 
 async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, fullPath }, fileCount = 0, parentAlbumName = '') {
@@ -341,7 +343,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
                     googlePhotosAlbum = await createOrGetAlbum(userId, authToken, albumName);
                 }
 
-                const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
+                const mediaUploaded = await uploadMediaToAlbum('authToken', googlePhotosAlbum.id, file, folderName, fullPath);
 
                 fileCount++;
 
