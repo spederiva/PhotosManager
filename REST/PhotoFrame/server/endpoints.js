@@ -154,7 +154,7 @@ const addRoutes = (app, logger, passport) => {
         try {
             const token = req.user.token;
 
-            const data = await handleDeadLetter(token, 2, 10);
+            const data = await handleDeadLetter(token, 1, 10);
 
             return res.status(200).send({ deadletterLeftCounter: data || 0 });
         } catch (err) {

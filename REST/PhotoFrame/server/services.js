@@ -241,7 +241,7 @@ async function createAlbums(userId, authToken, folderLists) {
         throw new Error('Too many albums selected');
     }
 
-    const deadletterCount = await handleDeadLetter(authToken, 3, 10);
+    const deadletterCount = await handleDeadLetter(authToken, 1, 10);
     if (deadletterCount > 0) {
         throw new Error(`Dead Letter is not empty!. Count: ${deadletterCount}`);
     }
@@ -279,7 +279,7 @@ async function createAlbums(userId, authToken, folderLists) {
     }
 }
 
-async function handleDeadLetter(authToken, numberOfTries = 3, CHUNK_SIZE_ITEMS) {
+async function handleDeadLetter(authToken, numberOfTries = 1, CHUNK_SIZE_ITEMS) {
     for (let tries = 0; tries < numberOfTries; tries++) {
         const deadletter = await getDeadletterKeys();
 
