@@ -9,3 +9,4 @@ persist-upload-dead-letter/
 .idea/
 
 config.js
+/persist-album-items/
