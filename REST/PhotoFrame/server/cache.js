@@ -18,13 +18,14 @@ storage.init();
 const uploadDeadletter = persist.create({ dir: 'persist-upload-dead-letter/' });
 uploadDeadletter.init();
 
-const uploadFolderCache = persist.create({ dir: 'persist-upload-folders/' });
-uploadFolderCache.init();
+const albumItemsCache = persist.create({ dir: 'persist-album-items/' });
+albumItemsCache.init();
 
 function clearAllCache(){
     mediaItemCache.clearSync();
     albumCache.clearSync();
     storage.clearSync();
+    albumItemsCache.clearSync();
 }
 
-module.exports = { clearAllCache, storage, albumCache, mediaItemCache, uploadDeadletter, uploadFolderCache };
+module.exports = { clearAllCache, storage, albumCache, mediaItemCache, uploadDeadletter, albumItemsCache };

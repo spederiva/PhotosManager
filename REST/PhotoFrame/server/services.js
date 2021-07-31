@@ -4,7 +4,7 @@ const request = require('request-promise');
 const Photos = require('googlephotos');
 const config = require('../config.js');
 const { logger } = require('./logger');
-const { storage, mediaItemCache, uploadDeadletter, albumCache, uploadFolderCache } = require('./cache');
+const { storage, mediaItemCache, uploadDeadletter, albumCache, albumItemsCache } = require('./cache');
 
 const CHUNK_SIZE_ALBUMS = 3;
 const CHUNK_SIZE_ITEMS = 10;
@@ -50,6 +50,20 @@ function returnError(res, data) {
 
     // Return the error.
     res.status(statusCode).send(data.error || data.message);
+}
+
+async function searchItemByNameAndAlbum(authToken, albumId, fileName){
+    let photos = await albumItemsCache.getItem(albumId);
+
+    if(!photos) {
+        const items = (await libraryApiSearch(authToken, { albumId })) || [];
+
+        photos = items.photos;
+
+        albumItemsCache.setItemSync(albumId, photos);
+    }
+
+    return photos.find(i => i.filename === fileName);
 }
 
 // Submits a search request to the Google Photos Library API for the given
@@ -99,9 +113,7 @@ async function libraryApiSearch(authToken, parameters) {
             // Set the pageToken for the next request.
             parameters.pageToken = result.nextPageToken;
 
-            logger.verbose(
-                `Found ${items.length} images in this request. Total images: ${
-                    photos.length}`);
+            logger.verbose(`Found ${items.length} images in this request. Total images: ${photos.length}`);
 
             // Loop until the required number of photos has been loaded or until there
             // are no more photos, ie. there is no pageToken.
@@ -241,13 +253,15 @@ async function createAlbums(userId, authToken, folderLists) {
         throw new Error('Too many albums selected');
     }
 
+    // Clear cached albums in order to make sure we got all new albums
+    albumCache.clearSync();
+    albumItemsCache.clearSync();
+
+
     const deadletterCount = await handleDeadLetter(authToken, 1, 5);
     if (deadletterCount > 0) {
         throw new Error(`Dead Letter is not empty!. Count: ${deadletterCount}`);
     }
-
-    // Clear cached albums in order to make sure we got all new albums
-    albumCache.clearSync();
 
     try {
         const foldersResult = [];
@@ -343,6 +357,16 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
                     googlePhotosAlbum = await createOrGetAlbum(userId, authToken, albumName);
                 }
 
+                const isAlreadyInAlbum = await searchItemByNameAndAlbum(authToken, googlePhotosAlbum.id, file);
+                console.log(file, isAlreadyInAlbum);
+                if(isAlreadyInAlbum){
+                    logger.debug('Media already in album', { albumId: googlePhotosAlbum.id, file });
+
+                    fileCount++;
+
+                    continue;
+                }
+
                 const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
 
                 fileCount++;
@@ -425,7 +449,7 @@ async function createOrGetAlbum(userId, authToken, albumName) {
 async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = UPLOAD_MEDIA_TIMEOUT) {
     logger.info('Uploading media', { albumId, folderPath, fileName, fileDescription, timeout });
 
-     const filePath = `${folderPath}/${fileName}`;
+    const filePath = `${folderPath}/${fileName}`;
 
     const photos = new Photos(authToken);
 
