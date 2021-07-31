@@ -345,7 +345,9 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
             logger.debug('createAllAlbumsAndUploadPhotos', { folderName, fullPath, file, isDirectory, isValidFile });
 
             if (isDirectory) {
-                return await createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, fileCount, albumName);
+                fileCount = fileCount + await createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, fileCount, albumName || folderName);
+
+                continue;
             }
 
             if (isValidFile) {
