@@ -358,11 +358,10 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
                 }
 
                 const isAlreadyInAlbum = await searchItemByNameAndAlbum(authToken, googlePhotosAlbum.id, file);
-                console.log(file, isAlreadyInAlbum);
                 if(isAlreadyInAlbum){
-                    logger.debug('Media already in album', { albumId: googlePhotosAlbum.id, file });
-
                     fileCount++;
+
+                    logger.info('Media already in album', { albumId: googlePhotosAlbum.id, file, fileCount });
 
                     continue;
                 }
@@ -371,7 +370,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
 
                 fileCount++;
 
-                logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file, mediaUploaded });
+                logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file, fileCount, mediaUploaded });
 
                 // await sleep(WAITING_AFTER_ITEM_UPLOAD);
             }
