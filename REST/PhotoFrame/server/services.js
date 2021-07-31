@@ -12,7 +12,7 @@ const WAITING_AFTER_ITEM_UPLOAD = 500;
 const WAITING_AFTER_CHUNK_UPLOAD = 5000;
 
 const UPLOAD_MEDIA_TIMEOUT = 1 * 60000;
-const UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT = 60 * 60000;
+const UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT = 10 * 60000;
 
 
 // If the supplied result is succesful, the parameters and media items are
@@ -268,6 +268,8 @@ async function createAlbums(userId, authToken, folderLists) {
             logger.info('Albums with photos created', folders);
         }
 
+        await handleDeadLetter(authToken, 1, 5);
+
         return {
             foldersResult,
             deadletterCount: (await getDeadletterKeys()).length
@@ -347,16 +349,12 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
 
                 logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file, mediaUploaded });
 
-                await sleep(WAITING_AFTER_ITEM_UPLOAD);
+                // await sleep(WAITING_AFTER_ITEM_UPLOAD);
             }
         }
 
         await sleep(WAITING_AFTER_CHUNK_UPLOAD);
     }
-
-
-    await handleDeadLetter(authToken);
-
 
     return fileCount;
 }
