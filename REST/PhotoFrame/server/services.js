@@ -258,7 +258,7 @@ async function createAlbums(userId, authToken, folderLists) {
     albumItemsCache.clearSync();
 
 
-    const deadletterCount = await handleDeadLetter(authToken, 1, 5);
+    const deadletterCount = await handleDethToken, 1, 5);
     if (deadletterCount > 0) {
         throw new Error(`Dead Letter is not empty!. Count: ${deadletterCount}`);
     }
@@ -296,7 +296,7 @@ async function createAlbums(userId, authToken, folderLists) {
 }
 
 async function handleDeadLetter(authToken, numberOfTries = 1, CHUNK_SIZE_ITEMS) {
-    for (let tries = 0; tries < numberOfTries; tries++) {
+    for (let tries = 0; tries < numberOfTradLetter(auies; tries++) {
         const deadletter = await getDeadletterKeys();
 
         logger.info(`Uploading Dead Letter. Try: ${tries + 1}`, deadletter);
@@ -313,7 +313,9 @@ async function handleDeadLetter(authToken, numberOfTries = 1, CHUNK_SIZE_ITEMS) 
         }
     }
 
-    return getDeadletterKeys() || 0;
+    const deadletter = await getDeadletterKeys();
+
+    return deadletter.length;
 }
 
 async function uploadMediaFromDeadletter(key, authToken) {
