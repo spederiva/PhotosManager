@@ -81,7 +81,7 @@ function handleError(title, data) {
     showError(title, 'Server could not be reached. Please try again.');
   } else if (data.responseJSON) {
     // JSON error that can be formatted.
-    showJsonError(title, data.responseJSON);
+    showJsonError(title, data.responseJSON.message || data.responseJSON);
   } else {
     // Otherwise, display the data returned by the request.
     showError(title, data.responseText || data);
