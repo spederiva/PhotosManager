@@ -7,5 +7,5 @@ persist-albumcache/
 persist-upload-dead-letter/
 .DS_STORE
 .idea/
-
+config.js
 /persist-album-items/
