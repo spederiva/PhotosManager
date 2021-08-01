@@ -52,10 +52,10 @@ function returnError(res, data) {
     res.status(statusCode).send(data.error || data.message);
 }
 
-async function searchItemByNameAndAlbum(authToken, albumId, fileName){
+async function searchItemByNameAndAlbum(authToken, albumId, fileName) {
     let photos = await albumItemsCache.getItem(albumId);
 
-    if(!photos) {
+    if (!photos) {
         const items = (await libraryApiSearch(authToken, { albumId })) || [];
 
         photos = items.photos;
@@ -295,6 +295,61 @@ async function createAlbums(userId, authToken, folderLists) {
     }
 }
 
+async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, fullPath }, fileCount = 0, parentAlbumName = '') {
+    let googlePhotosAlbum = null;
+    let albumName = null;
+
+    const items = getItemsInFolder(fullPath);
+
+    logger.info('Creating album and uploading photos', { folderName, fullPath, parentAlbumName, count: items.length });
+
+    const chunks = _.chunk(items, CHUNK_SIZE_ITEMS);
+    for (const chunk of chunks) {
+        let alreadyInAlbumCounter = 0;
+
+        for (const file of chunk) {
+            const isDirectory = isFolder(fullPath, file);
+            const isValidFile = isValidFileExtension(file);
+
+            logger.debug('createAllAlbumsAndUploadPhotos', { folderName, fullPath, file, isDirectory, isValidFile });
+
+            if (isDirectory) {
+                const fileUploaded = await createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, fileCount, albumName || folderName);
+
+                fileCount = fileCount + fileUploaded;
+
+                continue;
+            }
+
+            if (isValidFile) {
+                if (!googlePhotosAlbum) {
+                    const prefixAlbumName = parentAlbumName ? `${parentAlbumName} - ` : '';
+
+                    albumName = prefixAlbumName + folderName;
+
+                    googlePhotosAlbum = await createOrGetAlbum(userId, authToken, albumName);
+                }
+
+                const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
+
+                fileCount++;
+
+                alreadyInAlbumCounter += (mediaUploaded.isAlreadyInAlbum ? 1: 0);
+
+                logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file, fileCount, mediaUploaded });
+            }
+        }
+
+        if(chunk.length > 1 && alreadyInAlbumCounter === chunk.length){
+            continue;
+        }
+
+        await sleep(WAITING_AFTER_CHUNK_UPLOAD);
+    }
+
+    return fileCount;
+}
+
 async function handleDeadLetter(authToken, numberOfTries = 1, CHUNK_SIZE_ITEMS) {
     for (let tries = 0; tries < numberOfTries; tries++) {
         const deadletter = await getDeadletterKeys();
@@ -325,56 +380,7 @@ async function uploadMediaFromDeadletter(key, authToken) {
         return;
     }
 
-    const media = await uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
-
-    return media;
-}
-
-async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, fullPath }, fileCount = 0, parentAlbumName = '') {
-    let googlePhotosAlbum = null;
-    let albumName = null;
-
-    const items = getItemsInFolder(fullPath);
-
-    logger.info('Creating album and uploading photos', { folderName, fullPath, parentAlbumName, count: items.length });
-
-    const chunks = _.chunk(items, CHUNK_SIZE_ITEMS);
-    for (const chunk of chunks) {
-        for (const file of chunk) {
-            const isDirectory = isFolder(fullPath, file);
-            const isValidFile = isValidFileExtension(file);
-
-            logger.debug('createAllAlbumsAndUploadPhotos', { folderName, fullPath, file, isDirectory, isValidFile });
-
-            if (isDirectory) {
-                fileCount = fileCount + await createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, fileCount, albumName || folderName);
-
-                continue;
-            }
-
-            if (isValidFile) {
-                if (!googlePhotosAlbum) {
-                    const prefixAlbumName = parentAlbumName ? `${parentAlbumName} - ` : '';
-
-                    albumName = prefixAlbumName + folderName;
-
-                    googlePhotosAlbum = await createOrGetAlbum(userId, authToken, albumName);
-                }
-
-                const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
-
-                fileCount++;
-
-                logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file, fileCount, mediaUploaded });
-
-                // await sleep(WAITING_AFTER_ITEM_UPLOAD);
-            }
-        }
-
-        await sleep(WAITING_AFTER_CHUNK_UPLOAD);
-    }
-
-    return fileCount;
+    return uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
 }
 
 function getItemsInFolder(dirPath = config.rootFolder, arrayOfFiles = []) {
@@ -442,10 +448,10 @@ async function createOrGetAlbum(userId, authToken, albumName) {
 
 async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = UPLOAD_MEDIA_TIMEOUT) {
     const isAlreadyInAlbum = await searchItemByNameAndAlbum(authToken, albumId, fileName);
-    if(isAlreadyInAlbum){
+    if (isAlreadyInAlbum) {
         logger.info('Media already in album', { albumId, fileName });
 
-        return { albumId, fileName };
+        return { albumId, fileName, isAlreadyInAlbum: true };
     }
 
     logger.info('Uploading media', { albumId, folderPath, fileName, fileDescription, timeout });
