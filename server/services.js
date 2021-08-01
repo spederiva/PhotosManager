@@ -332,6 +332,12 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
 
                 const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
 
+                if(!mediaUploaded){
+                    logger.info('Media NOT uploaded', { albumId: googlePhotosAlbum.id, file, fileCount });
+
+                    continue;
+                }
+
                 fileCount++;
 
                 alreadyInAlbumCounter += (mediaUploaded.isAlreadyInAlbum ? 1: 0);
