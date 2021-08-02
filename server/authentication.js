@@ -44,7 +44,7 @@ async function refreshToken(authToken) {
 
         logger.info(`Token refreshed`, {newRefreshedToken, date: Date()});
 
-        shouldRefreshToken();
+        setTokenDate();
 
         return newRefreshedToken;
     } catch (err) {
