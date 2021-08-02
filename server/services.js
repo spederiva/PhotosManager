@@ -109,8 +109,7 @@ async function libraryApiSearch(authToken, parameters) {
 
             // Loop until the required number of photos has been loaded or until there
             // are no more photos, ie. there is no pageToken.
-        } while (photos.length < config.photosToLoad &&
-        parameters.pageToken != null);
+        } while (photos.length < config.photosToLoad && parameters.pageToken != null);
 
     } catch (err) {
         // If the error is a StatusCodeError, it contains an error.error object that
