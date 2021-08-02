@@ -305,7 +305,9 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
             logger.debug('createAllAlbumsAndUploadPhotos', { folderName, fullPath, file, isDirectory, isValidFile });
 
             if (isDirectory) {
-                const fileUploaded = await createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, fileCount, albumName || folderName);
+                const prefixAlbumName = parentAlbumName ? `${parentAlbumName} - ${folderName}` : folderName;
+
+                const fileUploaded = await createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, fileCount, prefixAlbumName);
 
                 fileCount = fileCount + fileUploaded;
 
