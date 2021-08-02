@@ -5,6 +5,7 @@ const Photos = require('googlephotos');
 const config = require('../config.js');
 const { logger } = require('./logger');
 const { storage, mediaItemCache, uploadDeadletter, albumCache, albumItemsCache } = require('./cache');
+const { refreshToken } = require('./authentication');
 
 // If the supplied result is succesful, the parameters and media items are
 // cached.
@@ -323,7 +324,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
 
                 const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
 
-                if(!mediaUploaded){
+                if (!mediaUploaded) {
                     logger.info('Media NOT uploaded', { albumId: googlePhotosAlbum.id, file, fileCount });
 
                     continue;
@@ -331,13 +332,13 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
 
                 fileCount++;
 
-                alreadyInAlbumCounter += (mediaUploaded.isAlreadyInAlbum ? 1: 0);
+                alreadyInAlbumCounter += (mediaUploaded.isAlreadyInAlbum ? 1 : 0);
 
                 logger.debug('Media uploaded to Album', { albumId: googlePhotosAlbum.id, file, fileCount, mediaUploaded });
             }
         }
 
-        if(chunk.length > 1 && alreadyInAlbumCounter === chunk.length){
+        if (chunk.length > 1 && alreadyInAlbumCounter === chunk.length) {
             continue;
         }
 
@@ -444,6 +445,8 @@ async function createOrGetAlbum(userId, authToken, albumName) {
 }
 
 async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = config.uploadMediaTimeout) {
+    await refreshToken(authToken);
+
     const isAlreadyInAlbum = await searchItemByNameAndAlbum(authToken, albumId, fileName);
     if (isAlreadyInAlbum) {
         logger.info('Media already in album', { albumId, fileName });
