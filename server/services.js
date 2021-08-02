@@ -6,15 +6,6 @@ const config = require('../config.js');
 const { logger } = require('./logger');
 const { storage, mediaItemCache, uploadDeadletter, albumCache, albumItemsCache } = require('./cache');
 
-const CHUNK_SIZE_ALBUMS = 5;
-const CHUNK_SIZE_ITEMS = 10;
-const WAITING_AFTER_ITEM_UPLOAD = 500;
-const WAITING_AFTER_CHUNK_UPLOAD = 5000;
-
-const UPLOAD_MEDIA_TIMEOUT = 1 * 60000;
-const UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT = 10 * 60000;
-
-
 // If the supplied result is succesful, the parameters and media items are
 // cached.
 // Helper method that returns and caches the result from a Library API search
@@ -265,7 +256,7 @@ async function createAlbums(userId, authToken, folderLists) {
 
     try {
         const foldersResult = [];
-        const chunks = _.chunk(folderLists, CHUNK_SIZE_ALBUMS);
+        const chunks = _.chunk(folderLists, config.chunkSizeAlbums);
 
         logger.debug(`Creating albums. Split in ${chunks.length}`);
 
@@ -303,7 +294,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
 
     logger.info('Creating album and uploading photos', { folderName, fullPath, parentAlbumName, count: items.length });
 
-    const chunks = _.chunk(items, CHUNK_SIZE_ITEMS);
+    const chunks = _.chunk(items, config.chunkSizeItems);
     for (const chunk of chunks) {
         let alreadyInAlbumCounter = 0;
 
@@ -350,13 +341,13 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
             continue;
         }
 
-        await sleep(WAITING_AFTER_CHUNK_UPLOAD);
+        await sleep(config.waitingAfterChunkUpload);
     }
 
     return fileCount;
 }
 
-async function handleDeadLetter(authToken, numberOfTries = 1, CHUNK_SIZE_ITEMS) {
+async function handleDeadLetter(authToken, numberOfTries = 1, chunkSize) {
     for (let tries = 0; tries < numberOfTries; tries++) {
         const deadletter = await getDeadletterKeys();
 
@@ -366,11 +357,11 @@ async function handleDeadLetter(authToken, numberOfTries = 1, CHUNK_SIZE_ITEMS) 
             return 0;
         }
 
-        const chunks = _.chunk(deadletter, CHUNK_SIZE_ITEMS || 1);
+        const chunks = _.chunk(deadletter, chunkSize || 1);
         for (const chunk of chunks) {
             await Promise.all(chunk.map(key => uploadMediaFromDeadletter(key, authToken)));
 
-            await sleep(WAITING_AFTER_ITEM_UPLOAD * CHUNK_SIZE_ITEMS / 2);
+            await sleep(config.waitingAfterItemUpload * chunkSize / 2);
         }
     }
 
@@ -386,7 +377,7 @@ async function uploadMediaFromDeadletter(key, authToken) {
         return;
     }
 
-    return uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, UPLOAD_MEDIA_DEAD_LETTER_TIMEOUT);
+    return uploadMediaToAlbum(authToken, dl.albumId, dl.fileName, dl.fileDescription, dl.folderPath, config.uploadMediaDeadLetterTimeout);
 }
 
 function getItemsInFolder(dirPath = config.rootFolder, arrayOfFiles = []) {
@@ -452,7 +443,7 @@ async function createOrGetAlbum(userId, authToken, albumName) {
     }
 }
 
-async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = UPLOAD_MEDIA_TIMEOUT) {
+async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = config.uploadMediaTimeout) {
     const isAlreadyInAlbum = await searchItemByNameAndAlbum(authToken, albumId, fileName);
     if (isAlreadyInAlbum) {
         logger.info('Media already in album', { albumId, fileName });

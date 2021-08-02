@@ -54,4 +54,12 @@ config.rootFolder = '/Users/sebastian/Desktop/temp-pics';
 
 config.validFileExtensions = ['BMP', 'GIF', 'HEIC', 'ICO', 'JPG', 'PNG', 'TIFF', 'WEBP', 'RAW', '3GP', '3G2', 'ASF', 'AVI', 'DIVX', 'M2T', 'M2TS', 'M4V', 'MKV', 'MMV', 'MOD', 'MOV', 'MP4', 'MPG', 'MTS', 'TOD', 'WMV'].map(e => e.toUpperCase())
 
+config.chunkSizeAlbums = 5;
+config.chunkSizeItems = 10;
+config.waitingAfterItemUpload = 500;
+config.waitingAfterChunkUpload = 5000;
+
+config.uploadMediaTimeout = 1 * 60000;
+config.uploadMediaDeadLetterTimeout = 10 * 60000;
+
 module.exports = config;
