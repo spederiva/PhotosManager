@@ -19,7 +19,6 @@ const config = {};
 // The OAuth client ID from the Google Developers console.
 config.oAuthClientID = '';
 
-
 // The OAuth client secret from the Google Developers console.
 config.oAuthclientSecret = '';
 
@@ -61,5 +60,7 @@ config.waitingAfterChunkUpload = 5000;
 
 config.uploadMediaTimeout = 1 * 60000;
 config.uploadMediaDeadLetterTimeout = 10 * 60000;
+
+config.tokenLifetime = 2820000 //47 minutes;
 
 module.exports = config;
