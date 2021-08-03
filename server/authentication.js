@@ -51,7 +51,7 @@ async function refreshToken(authToken) {
 
         return token;
     } catch (err) {
-        logger.error('Error refreshing the token', error);
+        logger.error('Error refreshing the token', err);
 
         throw err;
     }
