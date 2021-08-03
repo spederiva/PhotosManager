@@ -143,6 +143,10 @@ const addRoutes = (app, logger, passport) => {
     app.post('/addAlbums', async (req, res) => {
         logger.info('Create New Albums', req.body);
 
+        if (!req.user) {
+            return returnError(res, { error: { code: 401 } });
+        }
+
         try {
             const token = req.user.token;
             const userId = req.user.profile.id;
@@ -159,6 +163,10 @@ const addRoutes = (app, logger, passport) => {
     app.post('/processDeadletter', async (req, res) => {
         logger.info('Process Dead Letter', req.body);
 
+        if (!req.user) {
+            return returnError(res, { error: { code: 401 } });
+        }
+
         try {
             const token = req.user.token;
 
@@ -171,9 +179,12 @@ const addRoutes = (app, logger, passport) => {
         }
     });
 
-    // Returns all albums owned by the user.
     app.get('/getAlbums', async (req, res) => {
         logger.info('Loading albums');
+
+        if (!req.user) {
+            return returnError(res, { error: { code: 401 } });
+        }
 
         try {
             const userId = req.user.profile.id;
@@ -229,6 +240,11 @@ const addRoutes = (app, logger, passport) => {
 
     app.get('/getFolders', async (req, res) => {
         logger.info('Loading Folders');
+
+        if (!req.user) {
+            return returnError(res, { error: { code: 401 } });
+        }
+
         const userId = req.user.profile.id;
 
         try {
