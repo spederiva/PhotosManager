@@ -28,6 +28,7 @@ const addRoutes = (app, logger, passport) => {
         scope: config.scopes,
         failureFlash: true,  // Display errors to the user.
         session: true,
+        accessType: 'offline'
     }));
 
     // Callback receiver for the OAuth process after log in.
