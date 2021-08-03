@@ -353,6 +353,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
 
 async function handleDeadLetter(authToken, numberOfTries = 1, chunkSize) {
     for (let tries = 0; tries < numberOfTries; tries++) {
+        const token  = await refreshToken(authToken);
         const deadletter = await getDeadletterKeys();
 
         logger.info(`Uploading Dead Letter. Try: ${tries + 1}`, deadletter);
@@ -363,7 +364,7 @@ async function handleDeadLetter(authToken, numberOfTries = 1, chunkSize) {
 
         const chunks = _.chunk(deadletter, chunkSize || 1);
         for (const chunk of chunks) {
-            await Promise.all(chunk.map(key => uploadMediaFromDeadletter(key, authToken)));
+            await Promise.all(chunk.map(key => uploadMediaFromDeadletter(key, token)));
 
             await sleep(config.waitingAfterItemUpload * chunkSize / 2);
         }
