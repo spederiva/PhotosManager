@@ -471,7 +471,9 @@ async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription,
     } catch (err) {
         logger.error('Error uploading file', { albumId, fileName, error: { ...err, message: err.message } });
 
-        resetToken();
+        if(err && err.message === 'Unauthorized') {
+            resetToken();
+        }
 
         uploadDeadletter.setItemSync(Date.now().toString(), { albumId, fileName, fileDescription, folderPath, err: err && err.message });
     }
