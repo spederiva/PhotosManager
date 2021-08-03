@@ -5,7 +5,7 @@ const Photos = require('googlephotos');
 const config = require('../config.js');
 const { logger } = require('./logger');
 const { storage, mediaItemCache, uploadDeadletter, albumCache, albumItemsCache } = require('./cache');
-const { refreshToken } = require('./authentication');
+const { refreshToken, resetToken } = require('./authentication');
 
 // If the supplied result is succesful, the parameters and media items are
 // cached.
@@ -470,6 +470,8 @@ async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription,
         return response;
     } catch (err) {
         logger.error('Error uploading file', { albumId, fileName, error: { ...err, message: err.message } });
+
+        resetToken();
 
         uploadDeadletter.setItemSync(Date.now().toString(), { albumId, fileName, fileDescription, folderPath, err: err && err.message });
     }

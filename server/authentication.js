@@ -12,8 +12,13 @@ function setToken(authToken) {
     token = authToken;
 }
 
+function resetToken(){
+    tokenDate = 0
+    token = null;
+}
+
 function shouldRefreshToken() {
-    return Date.now() - tokenDate >= config.tokenLifetime;
+    return !token || Date.now() - tokenDate >= config.tokenLifetime;
 }
 
 async function refreshToken(authToken) {
@@ -52,4 +57,4 @@ async function refreshToken(authToken) {
     }
 }
 
-module.exports = { refreshToken, setTokenDate: setToken };
+module.exports = { refreshToken, resetToken };
