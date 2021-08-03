@@ -1,7 +1,6 @@
 const config = require('../config.js');
 const { storage, albumCache, mediaItemCache, clearAllCache } = require('./cache');
 const { returnPhotos, returnError, libraryApiSearch, getAlbums, createAlbums, getFolders, handleDeadLetter, refreshToken } = require('./services');
-const { setTokenDate } = require('./authentication');
 
 const addRoutes = (app, logger, passport) => {
 
@@ -33,8 +32,6 @@ const addRoutes = (app, logger, passport) => {
 
     // Callback receiver for the OAuth process after log in.
     app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/', failureFlash: true, session: true }), (req, res) => {
-        setTokenDate();
-
         // User has logged in.
         logger.info('User has logged in.');
 

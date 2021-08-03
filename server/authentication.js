@@ -3,25 +3,23 @@ const { logger } = require('./logger');
 const request = require('request-promise');
 
 let tokenDate = 0;
+let token = null;
 
-function setTokenDate() {
-    logger.info(`Set Token Date: ${Date()}`);
+function setToken(authToken) {
+    logger.info(`Set Token Date`, { date: Date(), authToken });
 
     tokenDate = Date.now();
+    token = authToken;
 }
 
 function shouldRefreshToken() {
-    if(!tokenDate){
-        setTokenDate();
-    }
-
     return Date.now() - tokenDate >= config.tokenLifetime;
 }
 
 async function refreshToken(authToken) {
     try {
         if (!shouldRefreshToken()) {
-            return;
+            return token;
         }
 
         logger.info(`Refreshing token: ${authToken}`);
@@ -42,11 +40,11 @@ async function refreshToken(authToken) {
 
         const newRefreshedToken = JSON.parse(result);
 
-        logger.info(`Token refreshed`, {newRefreshedToken, date: Date()});
+        logger.info(`Token refreshed`, { newRefreshedToken, date: Date() });
 
-        setTokenDate();
+        setToken(newRefreshedToken.access_token);
 
-        return newRefreshedToken;
+        return token;
     } catch (err) {
         logger.error('Error refreshing the token', error);
 
@@ -54,4 +52,4 @@ async function refreshToken(authToken) {
     }
 }
 
-module.exports = { refreshToken, setTokenDate };
+module.exports = { refreshToken, setTokenDate: setToken };

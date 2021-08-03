@@ -286,9 +286,10 @@ async function createAlbums(userId, authToken, folderLists) {
     }
 }
 
-async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, fullPath }, fileCount = 0, parentAlbumName = '') {
+async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, fullPath }, parentFileCount = 0, parentAlbumName = '') {
     let googlePhotosAlbum = null;
     let albumName = null;
+    let fileCount = 0;
 
     const items = getItemsInFolder(fullPath);
 
@@ -299,6 +300,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
         let alreadyInAlbumCounter = 0;
 
         for (const file of chunk) {
+            const token  = await refreshToken(authToken);
             const isDirectory = isFolder(fullPath, file);
             const isValidFile = isValidFileExtension(file);
 
@@ -307,7 +309,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
             if (isDirectory) {
                 const prefixAlbumName = parentAlbumName ? `${parentAlbumName} - ${folderName}` : folderName;
 
-                const fileUploaded = await createAllAlbumsAndUploadPhotos(userId, authToken, { folderName: file, fullPath: `${fullPath}/${file}` }, fileCount, prefixAlbumName);
+                const fileUploaded = await createAllAlbumsAndUploadPhotos(userId, token, { folderName: file, fullPath: `${fullPath}/${file}` }, 0, prefixAlbumName);
 
                 fileCount = fileCount + fileUploaded;
 
@@ -320,10 +322,10 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
 
                     albumName = prefixAlbumName + folderName;
 
-                    googlePhotosAlbum = await createOrGetAlbum(userId, authToken, albumName);
+                    googlePhotosAlbum = await createOrGetAlbum(userId, token, albumName);
                 }
 
-                const mediaUploaded = await uploadMediaToAlbum(authToken, googlePhotosAlbum.id, file, folderName, fullPath);
+                const mediaUploaded = await uploadMediaToAlbum(token, googlePhotosAlbum.id, file, folderName, fullPath);
 
                 if (!mediaUploaded) {
                     logger.info('Media NOT uploaded', { albumId: googlePhotosAlbum.id, file, fileCount });
@@ -446,9 +448,9 @@ async function createOrGetAlbum(userId, authToken, albumName) {
 }
 
 async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = config.uploadMediaTimeout) {
-    await refreshToken(authToken);
+    const token  = await refreshToken(authToken);
 
-    const isAlreadyInAlbum = await searchItemByNameAndAlbum(authToken, albumId, fileName);
+    const isAlreadyInAlbum = await searchItemByNameAndAlbum(token, albumId, fileName);
     if (isAlreadyInAlbum) {
         logger.info('Media already in album', { albumId, fileName });
 
@@ -459,7 +461,7 @@ async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription,
 
     const filePath = `${folderPath}/${fileName}`;
 
-    const photos = new Photos(authToken);
+    const photos = new Photos(token);
 
     try {
         const uploadToken = await photos.transport.upload(fileName, filePath, timeout);
