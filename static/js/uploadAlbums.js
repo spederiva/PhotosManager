@@ -78,8 +78,8 @@ function addAlbum() {
 
             showMessage('Everything OK', `${data.foldersResult.length} folder/s and ${itemsUploaded} photos were upload successfully!. Dead Letter: ${data.deadletterCount}`);
         },
-        error: (data) => {
-            handleError('Couldn\'t import album', data);
+        error: (err) => {
+            handleError('Couldn\'t import album', null, err);
         }
     });
 }
@@ -103,8 +103,8 @@ function processDeadletter() {
 
             listAlbums();
         },
-        error: (data) => {
-            handleError('Couldn\'t process dead letter', 'Try again refreshing the page');
+        error: (err) => {
+            handleError('Couldn\'t process dead letter', 'Try again refreshing the page', err);
         }
     });
 }

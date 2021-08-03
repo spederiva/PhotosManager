@@ -67,12 +67,12 @@ function hideError() {
 // Intended to be used as the error handler for ajax request to the backend.
 // For authentication issues, the user is redirected to the log out screen.
 // Otherwise, the error is shown to the user (and prettyprinted if possible).
-function handleError(title, data) {
+function handleError(title, data, err) {
   console.log('Error: ' + JSON.stringify(data));
 
   hideLoadingDialog();
 
-  if (data.status == 401) {
+  if (data.status == 401 || (err && err.responseJSON && err.responseJSON.error === 'invalid_grant') ) {
     // Authentication error. Redirect back to the log in screen.
     window.location = '/logout';
   } else if (data.status == 0) {
