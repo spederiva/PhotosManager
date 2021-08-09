@@ -38,7 +38,7 @@ config.scopes = [
 ];
 
 // The number of photos to load for search requests.
-config.photosToLoad = 150;
+config.photosToLoad = 10000;
 
 // The page size to use for search requests. 100 is reccommended.
 config.searchPageSize = 100;
