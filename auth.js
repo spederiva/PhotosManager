@@ -13,6 +13,7 @@
 // limitations under the License.
 
 const config = require('./config.js');
+const { setTokens } = require('./server/authentication');
 
 const GoogleOAuthStrategy = require('passport-google-oauth20').Strategy;
 module.exports = (passport) => {
@@ -22,8 +23,11 @@ module.exports = (passport) => {
             clientID: config.oAuthClientID,
             clientSecret: config.oAuthclientSecret,
             callbackURL: config.oAuthCallbackUrl,
-            // Set the correct profile URL that does not require any additional APIs
             userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo'
         },
-        (token, refreshToken, profile, done) => done(null, { profile, token })));
+        (token, refreshToken, profile, done, ...aaa) => {
+            setTokens(token, refreshToken);
+
+            return done(null, { profile, token })
+        }));
 };

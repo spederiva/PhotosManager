@@ -28,7 +28,9 @@ const addRoutes = (app, logger, passport) => {
         scope: config.scopes,
         failureFlash: true,  // Display errors to the user.
         session: true,
-        accessType: 'offline'
+        accessType: 'offline',
+        // prompt: 'consent',
+        // approvalPrompt: 'force'
     }));
 
     // Callback receiver for the OAuth process after log in.
@@ -37,13 +39,6 @@ const addRoutes = (app, logger, passport) => {
         logger.info('User has logged in.');
 
         res.redirect('/');
-    });
-
-    // Loads the search page if the user is authenticated. This page includes the search form.
-    app.get('/refreshToken', (req, res) => {
-        const authToken = req.user.token;
-
-        refreshToken(req, res, 'pages/search');
     });
 
     // Loads the search page if the user is authenticated. This page includes the search form.

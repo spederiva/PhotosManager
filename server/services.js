@@ -5,7 +5,7 @@ const Photos = require('googlephotos');
 const config = require('../config.js');
 const { logger } = require('./logger');
 const { storage, mediaItemCache, uploadDeadletter, albumCache, albumItemsCache } = require('./cache');
-const { refreshToken, resetToken } = require('./authentication');
+const { refreshToken, resetToken, getToken } = require('./authentication');
 
 // If the supplied result is succesful, the parameters and media items are
 // cached.
@@ -300,7 +300,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
         let alreadyInAlbumCounter = 0;
 
         for (const file of chunk) {
-            const token  = await refreshToken(authToken);
+            const token = await getToken();
             const isDirectory = isFolder(fullPath, file);
             const isValidFile = isValidFileExtension(file);
 
@@ -353,7 +353,7 @@ async function createAllAlbumsAndUploadPhotos(userId, authToken, { folderName, f
 
 async function handleDeadLetter(authToken, numberOfTries = 1, chunkSize) {
     for (let tries = 0; tries < numberOfTries; tries++) {
-        const token  = await refreshToken(authToken);
+        const token = await getToken();
         const deadletter = await getDeadletterKeys();
 
         logger.info(`Uploading Dead Letter. Try: ${tries + 1}`, deadletter);
@@ -449,9 +449,7 @@ async function createOrGetAlbum(userId, authToken, albumName) {
 }
 
 async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription, folderPath, timeout = config.uploadMediaTimeout) {
-    const token  = await refreshToken(authToken);
-
-    const isAlreadyInAlbum = await searchItemByNameAndAlbum(token, albumId, fileName);
+    const isAlreadyInAlbum = await searchItemByNameAndAlbum(authToken, albumId, fileName);
     if (isAlreadyInAlbum) {
         logger.info('Media already in album', { albumId, fileName });
 
@@ -462,7 +460,7 @@ async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription,
 
     const filePath = `${folderPath}/${fileName}`;
 
-    const photos = new Photos(token);
+    const photos = new Photos(authToken);
 
     try {
         const uploadToken = await photos.transport.upload(fileName, filePath, timeout);
@@ -472,7 +470,7 @@ async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription,
     } catch (err) {
         logger.error('Error uploading file', { albumId, fileName, error: { ...err, message: err.message } });
 
-        if(err && err.message === 'Unauthorized') {
+        if (err && err.message === 'Unauthorized') {
             resetToken();
         }
 

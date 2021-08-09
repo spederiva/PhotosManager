@@ -5,6 +5,7 @@ const consoleTransport = new winston.transports.Console();
 
 // Set up winston logging.
 const logger = winston.createLogger({
+    level: process.env.DEBUG ? 'silly' : 'verbose',
     format: winston.format.combine(
         winston.format.colorize(),
         winston.format.simple()
@@ -14,4 +15,4 @@ const logger = winston.createLogger({
     ]
 });
 
-module.exports = {logger, consoleTransport};
+module.exports = { logger, consoleTransport };
