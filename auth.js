@@ -22,8 +22,11 @@ module.exports = (passport) => {
             clientID: config.oAuthClientID,
             clientSecret: config.oAuthclientSecret,
             callbackURL: config.oAuthCallbackUrl,
-            // Set the correct profile URL that does not require any additional APIs
             userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo'
         },
-        (token, refreshToken, profile, done) => done(null, { profile, token })));
+        (token, refreshToken, profile, done) => {
+console.log('REFRESH TOKEN', refreshToken)
+
+            return done(null, { profile, token })
+        }));
 };

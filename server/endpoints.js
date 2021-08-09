@@ -1,6 +1,6 @@
 const config = require('../config.js');
 const { storage, albumCache, mediaItemCache, clearAllCache } = require('./cache');
-const { returnPhotos, returnError, libraryApiSearch, getAlbums, createAlbums, getFolders, handleDeadLetter, refreshToken } = require('./services');
+const { returnPhotos, returnError, libraryApiSearch, getAlbums, createAlbums, getFolders, handleDeadLetter } = require('./services');
 
 const addRoutes = (app, logger, passport) => {
 
@@ -23,13 +23,13 @@ const addRoutes = (app, logger, passport) => {
         res.redirect('/');
     });
 
-    // Star the OAuth login process for Google.
-    app.get('/auth/google', passport.authenticate('google', {
-        scope: config.scopes,
-        failureFlash: true,  // Display errors to the user.
-        session: true,
-        accessType: 'offline'
-    }));
+    // // Star the OAuth login process for Google.
+    // app.get('/auth/google', passport.authenticate('google', {
+    //     scope: config.scopes,
+    //     failureFlash: true,  // Display errors to the user.
+    //     session: true,
+    //     accessType: 'offline'
+    // }));
 
     // Callback receiver for the OAuth process after log in.
     app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/', failureFlash: true, session: true }), (req, res) => {
@@ -37,13 +37,6 @@ const addRoutes = (app, logger, passport) => {
         logger.info('User has logged in.');
 
         res.redirect('/');
-    });
-
-    // Loads the search page if the user is authenticated. This page includes the search form.
-    app.get('/refreshToken', (req, res) => {
-        const authToken = req.user.token;
-
-        refreshToken(req, res, 'pages/search');
     });
 
     // Loads the search page if the user is authenticated. This page includes the search form.

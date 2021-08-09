@@ -14,8 +14,6 @@
 
 'use strict';
 
-// [START app]
-
 const async = require('async');
 const bodyParser = require('body-parser');
 const config = require('./config.js');
@@ -25,6 +23,7 @@ const http = require('http');
 const request = require('request-promise');
 const session = require('express-session');
 const sessionFileStore = require('session-file-store');
+const { logger, consoleTransport } = require('./server/logger');
 
 const app = express();
 const fileStore = sessionFileStore(session);
@@ -35,15 +34,8 @@ const addRoutes = require('./server/endpoints')
 // Use the EJS template engine
 app.set('view engine', 'ejs');
 
-
-// Set up OAuth 2.0 authentication through the passport.js library.
-const passport = require('passport');
-const auth = require('./auth');
-auth(passport);
-
 // Set up a session middleware to handle user sessions.
-// NOTE: A secret is used to sign the cookie. This is just used for this sample
-// app and should be changed.
+// NOTE: A secret is used to sign the cookie. This is just used for this sample app and should be changed.
 const sessionMiddleware = session({
     resave: true,
     saveUninitialized: true,
@@ -51,39 +43,21 @@ const sessionMiddleware = session({
     secret: 'photo frame sample',
 });
 
-// Console transport for winton.
-const {logger, consoleTransport} = require('./server/logger');
-
 
 // Enable extensive logging if the DEBUG environment variable is set.
 if (process.env.DEBUG) {
-    // Print all winston log levels.
-    logger.level = 'silly';
-
     // Enable express.js debugging. This logs all received requests.
-    app.use(expressWinston.logger({
-        transports: [
-            consoleTransport
-        ],
-        winstonInstance: logger
-    }));
+    app.use(expressWinston.logger({ transports: [consoleTransport], winstonInstance: logger }));
+
     // Enable request debugging.
     require('request-promise').debug = true;
-} else {
-    // By default, only print all 'verbose' log level messages or below.
-    logger.level = 'verbose';
 }
-
 
 // Set up static routes for hosted libraries.
 app.use(express.static('static'));
 app.use('/js', express.static(__dirname + '/node_modules/jquery/dist/'));
-app.use(
-    '/fancybox',
-    express.static(__dirname + '/node_modules/@fancyapps/fancybox/dist/'));
-app.use(
-    '/mdlite',
-    express.static(__dirname + '/node_modules/material-design-lite/dist/'));
+app.use('/fancybox', express.static(__dirname + '/node_modules/@fancyapps/fancybox/dist/'));
+app.use('/mdlite', express.static(__dirname + '/node_modules/material-design-lite/dist/'));
 
 
 // Parse application/json request data.
@@ -95,6 +69,58 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Enable user session handling.
 app.use(sessionMiddleware);
 
+// Preparing google authentication
+const { google } = require('googleapis');
+
+// Create a new OAuth2 client with the configured keys.
+const oauth2Client = new google.auth.OAuth2(
+    config.oAuthClientID,
+    config.oAuthclientSecret,
+    config.oAuthCallbackUrl
+);
+
+// This is one of the many ways you can configure googleapis to use authentication credentials.
+// In this method, we're setting a global reference for all APIs.
+// Any other API you use here, like google.drive('v3'), will now use this auth client.
+// You can also override the auth client at the service and method call levels.
+google.options({ auth: oauth2Client });
+
+
+// Set up OAuth 2.0 authentication through the passport.js library.
+const passport = require('passport');
+const auth = require('./auth');
+auth(passport);
+
+// Star the OAuth login process for Google.
+// app.get('/auth/google', passport.authenticate('google', {
+//     scope: config.scopes,
+//     failureFlash: true,  // Display errors to the user.
+//     session: true,
+//     accessType: 'offline'
+// }));
+app.get('/auth/google', (req, res) => {
+    const authorizeUrl = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: config.scopes,
+    });
+
+    res.redirect(authorizeUrl);
+});
+
+// app.get('/auth/google/callback', async (req, res) => {
+//     // User has logged in.
+//     logger.info('User has logged in.');
+//
+//     console.log(req.query.code);
+//
+//     const {tokens} = await oauth2Client.getToken(req.query.code);
+//     oauth2Client.credentials = tokens; // eslint-disable-line require-atomic-updates
+//
+//     console.log(tokens)
+//
+//     res.redirect('/');
+// });
+
 // Set up passport and session handling.
 app.use(passport.initialize());
 app.use(passport.session());
@@ -104,8 +130,7 @@ app.use(passport.session());
 app.use((req, res, next) => {
     res.locals.name = '-';
     if (req.user && req.user.profile && req.user.profile.name) {
-        res.locals.name =
-            req.user.profile.name.givenName || req.user.profile.displayName;
+        res.locals.name = req.user.profile.name.givenName || req.user.profile.displayName;
     }
 
     res.locals.avatarUrl = '';
@@ -123,12 +148,6 @@ addRoutes(app, logger, passport);
 
 // Start the server
 server.listen(config.port, () => {
-    console.log(`App listening on port ${config.port}`);
-    console.log('Press Ctrl+C to quit.');
+    logger.info(`App listening on port ${config.port}`);
+    logger.info('Press Ctrl+C to quit.');
 });
-
-
-
-
-
-// [END app]
