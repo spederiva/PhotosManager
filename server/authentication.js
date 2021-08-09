@@ -46,10 +46,10 @@ function shouldRefreshToken() {
     return !token || Date.now() - tokenDate >= config.tokenLifetime;
 }
 
-async function refreshToken(authToken) {
+async function refreshToken() {
     try {
-        if (!shouldRefreshToken() || !googleRefreshToken) {
-            return token || authToken;
+        if (!googleRefreshToken) {
+            throw new Exception(401, 'No refresh token defined!');
         }
 
         logger.info(`Refreshing token: ${refreshToken}`);
@@ -65,7 +65,7 @@ async function refreshToken(authToken) {
                 refresh_token: googleRefreshToken,
                 grant_type: 'refresh_token'
             },
-            auth: { 'bearer': authToken },
+            auth: { 'bearer': token },
         });
 
         const newRefreshedToken = JSON.parse(result);

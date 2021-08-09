@@ -115,8 +115,7 @@ async function libraryApiSearch(authToken, parameters) {
         // If the error is a StatusCodeError, it contains an error.error object that
         // should be returned. It has a name, statuscode and message in the correct
         // format. Otherwise extract the properties.
-        error = err.error.error ||
-            { name: err.name, code: err.statusCode, message: err.message };
+        error = err.error.error || { name: err.name, code: err.statusCode, message: err.message };
         logger.error(error);
     }
 
@@ -238,7 +237,7 @@ async function createAlbums(userId, authToken, folderLists) {
         throw new Error('No Folder selected');
     }
 
-    if (!folderLists || folderLists.length > 50) {
+    if (!folderLists || folderLists.length > 100) {
         logger.info('Too many albums selected', folderLists);
 
         throw new Error('Too many albums selected');
@@ -470,11 +469,11 @@ async function uploadMediaToAlbum(authToken, albumId, fileName, fileDescription,
     } catch (err) {
         logger.error('Error uploading file', { albumId, fileName, error: { ...err, message: err.message } });
 
-        if (err && err.message === 'Unauthorized') {
-            resetToken();
-        }
-
         uploadDeadletter.setItemSync(Date.now().toString(), { albumId, fileName, fileDescription, folderPath, err: err && err.message });
+
+        if (err && err.message === 'Unauthorized') {
+            refreshToken();
+        }
     }
 }
 

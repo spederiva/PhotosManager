@@ -79,13 +79,13 @@ function addAlbum() {
             showMessage('Everything OK', `${data.foldersResult.length} folder/s and ${itemsUploaded} photos were upload successfully!. Dead Letter: ${data.deadletterCount}`);
         },
         error: (err) => {
-            handleError('Couldn\'t import album', null, err);
+            handleError('Couldn\'t import album', err);
         }
     });
 }
 
 function processDeadletter() {
-    showLoadingDialog('Process Dead Letter!');
+    showLoadingDialog('Processing Dead Letter!');
 
     $.ajax({
         type: 'POST',
@@ -104,7 +104,7 @@ function processDeadletter() {
             listAlbums();
         },
         error: (err) => {
-            handleError('Couldn\'t process dead letter', 'Try again refreshing the page', err);
+            handleError('Couldn\'t process dead letter', err);
         }
     });
 }
