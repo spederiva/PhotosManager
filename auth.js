@@ -31,7 +31,7 @@ module.exports = (passport) => {
             if (!refreshToken) {
                 const storedProfile = refreshTokenStorage.getItemSync(profile.id);
 
-                storedRefreshToken = storedProfile.refreshToken;
+                storedRefreshToken = storedProfile && storedProfile.refreshToken;
             }
 
             setTokens(token, refreshToken || storedRefreshToken);
