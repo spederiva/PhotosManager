@@ -21,6 +21,9 @@ uploadDeadletter.init();
 const albumItemsCache = persist.create({ dir: 'persist-album-items/' });
 albumItemsCache.init();
 
+const refreshTokenStorage = persist.create({ dir: 'persist-refresh-token/' });
+refreshTokenStorage.init();
+
 function clearAllCache(){
     mediaItemCache.clearSync();
     albumCache.clearSync();
@@ -28,4 +31,4 @@ function clearAllCache(){
     albumItemsCache.clearSync();
 }
 
-module.exports = { clearAllCache, storage, albumCache, mediaItemCache, uploadDeadletter, albumItemsCache };
+module.exports = { clearAllCache, storage, albumCache, mediaItemCache, uploadDeadletter, albumItemsCache, refreshTokenStorage };

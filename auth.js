@@ -13,6 +13,7 @@
 // limitations under the License.
 
 const config = require('./config.js');
+const { refreshTokenStorage } = require('./server/cache');
 const { setTokens } = require('./server/authentication');
 
 const GoogleOAuthStrategy = require('passport-google-oauth20').Strategy;
@@ -25,9 +26,20 @@ module.exports = (passport) => {
             callbackURL: config.oAuthCallbackUrl,
             userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo'
         },
-        (token, refreshToken, profile, done, ...aaa) => {
-            setTokens(token, refreshToken);
+        (token, refreshToken, profile, done) => {
+            let storedRefreshToken = null;
+            if (!refreshToken) {
+                const storedProfile = refreshTokenStorage.getItemSync(profile.id);
 
-            return done(null, { profile, token })
+                storedRefreshToken = storedProfile.refreshToken;
+            }
+
+            setTokens(token, refreshToken || storedRefreshToken);
+
+            if (refreshToken) {
+                refreshTokenStorage.setItemSync(profile.id, { name: profile.displayName, refreshToken });
+            }
+
+            return done(null, { profile, token });
         }));
 };

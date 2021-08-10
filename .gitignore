@@ -5,6 +5,7 @@ persist-storage/
 persist-mediaitemcache/
 persist-albumcache/
 persist-upload-dead-letter/
+persist-refresh-token/
 .DS_STORE
 .idea/
 config.js
