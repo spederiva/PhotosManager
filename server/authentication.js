@@ -10,7 +10,7 @@ let token = null;
 function setTokens(token, refresh_token) {
     logger.info(`Set Refresh Token`, { date: Date(), token, refresh_token });
 
-    if (!token) {
+    if (!token || !refresh_token) {
         throw Error('No refresh token defined!');
     }
 
