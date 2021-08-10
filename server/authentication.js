@@ -52,7 +52,7 @@ async function refreshToken() {
             throw new Exception(401, 'No refresh token defined!');
         }
 
-        logger.info(`Refreshing token: ${refreshToken}`);
+        logger.info(`Refreshing token: ${token}`);
 
         // Make a POST request to search the library or album
         const googleRefreshTokenUri = 'https://oauth2.googleapis.com'
