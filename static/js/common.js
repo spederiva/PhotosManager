@@ -28,7 +28,7 @@ function hideLoadingDialog() {
 
 // Shows an error with a title and a JSON object that is pretty printed.
 function showJsonError(title, json) {
-    const message = json && json.error && json.error.message;
+    const message = typeof (json) === 'string' ? json : json && json.error && json.error.message;
 
     showError(title, message || JSON.stringify(json, null, 2));
 }
